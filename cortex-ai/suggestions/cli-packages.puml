@@ -1,0 +1,80 @@
+@startuml CLI Packages
+skinparam backgroundColor #FFFFFF
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam ArrowColor #555555
+
+package cortex.cli {
+  [main]
+  [linking]
+  [analysis]
+  [testing]
+  package ai {
+    [__init__]
+    [chat]
+    [analyze]
+    [validate]
+  }
+  package config {
+    [__init__]
+    [manager]
+  }
+}
+
+package cortex.core {
+  [rule_based_linker]
+  [cross_vault_linker]
+  [meta_learner]
+  [pattern_detector]
+  [cortex_learner]
+}
+
+package cortex.integrations {
+  package cortex_ai {
+    [client]
+  }
+  [test_framework]
+  [obsidian]
+}
+
+cortex.cli.main --> cortex.cli.linking
+cortex.cli.main --> cortex.cli.analysis
+cortex.cli.main --> cortex.cli.testing
+cortex.cli.main --> cortex.cli.ai
+
+cortex.cli.linking --> cortex.core.rule_based_linker
+cortex.cli.linking --> cortex.core.cross_vault_linker
+
+cortex.cli.ai.__init__ --> cortex.cli.ai.chat
+cortex.cli.ai.__init__ --> cortex.cli.ai.analyze
+cortex.cli.ai.__init__ --> cortex.cli.ai.validate
+cortex.cli.ai.chat --> cortex.integrations.cortex_ai.client
+cortex.cli.ai.analyze --> cortex.integrations.cortex_ai.client
+cortex.cli.ai.validate --> cortex.integrations.cortex_ai.client
+
+cortex.cli.analysis --> cortex.core.meta_learner
+cortex.cli.analysis --> cortex.core.pattern_detector
+cortex.cli.analysis --> cortex.core.cortex_learner
+
+note right of cortex.cli.main
+  Facade: Einstiegspunkt
+  Command Pattern via Subcommands
+end note
+
+note right of cortex.core.rule_based_linker
+  Rule Engine (YAML),
+  Pipeline/Template-Method-ähnlicher Zyklus
+end note
+
+note right of cortex.integrations.cortex_ai.client
+  Adapter/Gateway → künftiger FastAPI-Service
+end note
+
+legend right
+  Layered Architecture:
+    CLI → Core → Integrations
+  Ports & Adapters:
+    Integrations kapseln externe Systeme
+endlegend
+
+@enduml

@@ -1,0 +1,33 @@
+@startuml Deployment Overview
+skinparam backgroundColor #FFFFFF
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam ArrowColor #374151
+
+node "Developer Machine (macOS)" {
+  component "cortex-cli (Python)" as CLI
+  folder "Workspace: cortex/" as Vault
+  component "cortex-ai (FastAPI)" as AI
+}
+
+CLI -[hidden]-> Vault
+
+CLI --> Vault : scans/updates files
+CLI ..> AI : optional HTTP (future)
+AI ..> Vault : optional access (analysis)
+
+note right of AI
+  Not yet implemented
+  - Endpoints: /chat, /analyze, /validate
+  - Start: uvicorn app.main:app
+end note
+
+legend right
+  Layering:
+    CLI (local) → Workspace (files)
+    CLI ..> AI (HTTP, future)
+  Notes:
+    AI-Service ist optional und aktuell nicht implementiert
+endlegend
+
+@enduml

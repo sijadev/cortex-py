@@ -1,0 +1,43 @@
+@startuml AI Chat Sequence
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam ArrowColor #374151
+
+actor User
+participant "cortex (CLI)\nai.chat" as CLI
+participant "CortexAIClient\n(integrations)" as Client
+participant "AI Service\n(FastAPI, future)" as Service
+
+== Non-interactive (message) ==
+User -> CLI: cortex ai chat -m "..."
+CLI -> Client: get_client(); is_enabled()
+Client --> CLI: True
+CLI -> Client: chat(message, vault_id)
+Client -> Service: POST /chat {message, vault_id}
+Service --> Client: {message, links}
+Client --> CLI: {message, links}
+CLI --> User: Render Markdown + Links
+
+== Interactive (-i) ==
+User -> CLI: cortex ai chat -i
+loop Until Ctrl+C
+  User -> CLI: Eingabe (message)
+  CLI -> Client: chat(message, vault_id)
+  Client -> Service: POST /chat
+  Service --> Client: Antwort
+  Client --> CLI: Antwort
+  CLI --> User: Anzeige
+end
+
+note right of Client
+  Adapter/Gateway:
+  - stabile API für CLI
+  - kapselt HTTP-Aufrufe
+end note
+
+note right of Service
+  Client-Server:
+  - REST-Endpoints /chat, /analyze, /validate
+end note
+
+@enduml

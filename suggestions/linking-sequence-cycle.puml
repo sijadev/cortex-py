@@ -1,0 +1,26 @@
+@startuml Linking Cycle Sequence
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam ArrowColor #374151
+
+actor User
+participant "cortex (CLI)\nlinking.rule-linker --run" as CLI
+participant "RuleBasedLinker" as RBL
+participant "Workspace Files\n(cortex/)" as FS
+
+User -> CLI: cortex linking rule-linker --run
+CLI -> RBL: run_linking_cycle()
+RBL -> RBL: load_rules()
+RBL -> FS: glob(trigger/target patterns)
+RBL -> FS: read files (tags, content)
+RBL -> RBL: should_link_files()/matches
+RBL -> FS: update md files (sections + links)
+RBL --> CLI: report {rules_applied, matches_found, links_created, files_modified, errors}
+CLI --> User: Summary/JSON/console table
+
+legend right
+	Pipeline/Template Style:
+		load → match → update → report
+endlegend
+
+@enduml

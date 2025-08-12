@@ -1,0 +1,98 @@
+[
+  {
+    "file": "cortex-cli/cortex/core/rule_based_linker.py",
+    "class_name": "LinkRule",
+    "loc": 9,
+    "has_docstring": true,
+    "methods": 0,
+    "public_methods": 0,
+    "private_methods": 0,
+    "static_methods": 0,
+    "class_methods": 0,
+    "avg_method_loc": 0.0,
+    "avg_complexity": 0.0,
+    "max_complexity": 0,
+    "class_attributes": [
+      "action",
+      "description",
+      "enabled",
+      "name",
+      "strength",
+      "target",
+      "trigger"
+    ],
+    "instance_attributes": []
+  },
+  {
+    "file": "cortex-cli/cortex/core/rule_based_linker.py",
+    "class_name": "LinkMatch",
+    "loc": 8,
+    "has_docstring": true,
+    "methods": 0,
+    "public_methods": 0,
+    "private_methods": 0,
+    "static_methods": 0,
+    "class_methods": 0,
+    "avg_method_loc": 0.0,
+    "avg_complexity": 0.0,
+    "max_complexity": 0,
+    "class_attributes": [
+      "action",
+      "reason",
+      "rule_name",
+      "source_file",
+      "strength",
+      "target_file"
+    ],
+    "instance_attributes": []
+  },
+  {
+    "file": "cortex-cli/cortex/core/rule_based_linker.py",
+    "class_name": "RuleBasedLinker",
+    "loc": 410,
+    "has_docstring": true,
+    "methods": 16,
+    "public_methods": 15,
+    "private_methods": 1,
+    "static_methods": 0,
+    "class_methods": 0,
+    "avg_method_loc": 24.5,
+    "avg_complexity": 5.25,
+    "max_complexity": 10,
+    "class_attributes": [],
+    "instance_attributes": [
+      "config",
+      "cortex_path",
+      "file_cache",
+      "logger",
+      "rules",
+      "rules_file",
+      "tag_cache"
+    ]
+  },
+  {
+    "file": "cortex-cli/cortex/core/cross_vault_linker.py",
+    "class_name": "CrossVaultLinker",
+    "loc": 317,
+    "has_docstring": true,
+    "methods": 14,
+    "public_methods": 13,
+    "private_methods": 1,
+    "static_methods": 0,
+    "class_methods": 0,
+    "avg_method_loc": 21.5,
+    "avg_complexity": 5.0,
+    "max_complexity": 11,
+    "class_attributes": [],
+    "instance_attributes": [
+      "cache_path",
+      "data_path",
+      "link_suggestions",
+      "logs_path",
+      "tag_suggestions",
+      "vault_connections",
+      "vault_registry",
+      "workspace_path"
+    ]
+  }
+]
