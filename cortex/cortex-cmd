@@ -1,0 +1,288 @@
+#!/bin/bash
+# Cortex Global Command - Universal Access to Cortex System
+# Usage: cortex [command] [options]
+
+CORTEX_PATH="/Users/simonjanke/Projects/cortex"
+SERVICE_PATH="$CORTEX_PATH/00-System/Services"
+
+# Color codes for better output
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+case "$1" in
+    "")
+        echo -e "${BLUE}🤖 Cortex v2.0 - AI-Powered Decision Intelligence${NC}"
+        echo ""
+        echo "Usage: cortex [command] [options]"
+        echo ""
+        echo -e "${GREEN}📊 System Commands (Active):${NC}"
+        echo "  dashboard     - Open performance dashboard"
+        echo "  hub           - Open Cortex hub (main navigation)"
+        echo "  resume        - Resume last session (Claude Desktop integration)"
+        echo "  new [name]    - Create new project workspace"
+        echo ""
+        echo -e "${GREEN}🔄 Sync & Monitoring (System-Level):${NC}"
+        echo "  sync          - Manage scheduled sync (start/stop/status)"
+        echo "  watcher       - Manage file watcher (enable/disable/status)"
+        echo ""
+        echo -e "${YELLOW}⚠️  Deprecated (Use cortex-cli instead):${NC}"
+        echo "  status        - Use: cortex status"
+        echo "  service       - Use: cortex analysis learner-service"
+        echo "  learn         - Use: cortex analysis meta-learn"
+        echo "  patterns      - Use: cortex analysis pattern-detect"
+        echo "  templates     - Use: cortex-cli config system"
+        echo ""
+        echo -e "${BLUE}🚀 Modern CLI (Recommended):${NC}"
+        echo "  Install cortex-cli for full functionality:"
+        echo "  pip install -e /path/to/cortex-cli"
+        echo ""
+        echo -e "${YELLOW}💡 Examples:${NC}"
+        echo "  cortex dashboard        # Open performance dashboard"
+        echo "  cortex sync start       # Start scheduled sync"
+        echo "  cortex watcher status   # Check file watcher status"
+        echo "  cortex new api-project  # Create new project"
+        ;;
+    "status")
+        # DEPRECATED - Use cortex-cli instead: cortex status
+        echo -e "${YELLOW}⚠️  DEPRECATED: Use cortex-cli instead${NC}"
+        echo -e "${BLUE}   New command: cortex status${NC}"
+        echo ""
+        echo -e "${RED}   This function will be removed in v3.0${NC}"
+        ;;
+    "service")
+        # DEPRECATED - Use cortex-cli instead: cortex analysis learner-service
+        echo -e "${YELLOW}⚠️  DEPRECATED: Use cortex-cli instead${NC}"
+        echo -e "${BLUE}   New command: cortex analysis learner-service${NC}"
+        echo ""
+        echo -e "${RED}   This function will be removed in v3.0${NC}"
+        ;;
+    "dashboard")
+        echo -e "${BLUE}📊 Opening Cortex Performance Dashboard...${NC}"
+        if command -v code >/dev/null 2>&1; then
+            code "$CORTEX_PATH/00-System/Dashboards/Performance-Dashboard.md"
+            echo "✅ Dashboard opened in VS Code"
+        elif [ -f "$CORTEX_PATH/00-System/Dashboards/Performance-Dashboard.md" ]; then
+            echo "📁 Dashboard location: $CORTEX_PATH/00-System/Dashboards/Performance-Dashboard.md"
+            echo "💡 Install VS Code for direct opening, or open manually in Obsidian"
+        else
+            echo -e "${RED}❌ Dashboard not found${NC}"
+        fi
+        ;;
+    "hub")
+        echo -e "${BLUE}🏠 Opening Cortex Hub...${NC}"
+        if command -v code >/dev/null 2>&1; then
+            code "$CORTEX_PATH/Cortex-Hub.md"
+            echo "✅ Hub opened in VS Code"
+        elif [ -f "$CORTEX_PATH/Cortex-Hub.md" ]; then
+            echo "📁 Hub location: $CORTEX_PATH/Cortex-Hub.md"
+            echo "💡 Open this file in Obsidian for full functionality"
+        else
+            echo -e "${RED}❌ Hub not found${NC}"
+        fi
+        ;;
+    "patterns")
+        # DEPRECATED - Use cortex-cli instead: cortex analysis pattern-detect
+        echo -e "${YELLOW}⚠️  DEPRECATED: Use cortex-cli instead${NC}"
+        echo -e "${BLUE}   New command: cortex analysis pattern-detect${NC}"
+        echo ""
+        echo -e "${RED}   This function will be removed in v3.0${NC}"
+        ;;
+    "learn")
+        # DEPRECATED - Use cortex-cli instead: cortex analysis meta-learn
+        echo -e "${YELLOW}⚠️  DEPRECATED: Use cortex-cli instead${NC}"
+        echo -e "${BLUE}   New command: cortex analysis meta-learn${NC}"
+        echo ""
+        echo -e "${RED}   This function will be removed in v3.0${NC}"
+        ;;
+    "resume")
+        echo -e "${BLUE}🔄 Resuming Cortex session...${NC}"
+        if [ -f "$CORTEX_PATH/Quick-Resume.md" ]; then
+            echo "📋 Loading session context..."
+            cat "$CORTEX_PATH/Quick-Resume.md"
+        else
+            echo -e "${RED}❌ Resume context not found${NC}"
+        fi
+        ;;
+    "new")
+        if [ -z "$2" ]; then
+            echo -e "${RED}❌ Project name required${NC}"
+            echo "Usage: cortex new <project-name>"
+            exit 1
+        fi
+        
+        project_name="$2"
+        project_dir="$CORTEX_PATH/01-Projects/EXTERNAL-PROJECTS/$project_name"
+        
+        echo -e "${BLUE}🚀 Creating new project: $project_name${NC}"
+        
+        if [ -d "$project_dir" ]; then
+            echo -e "${RED}❌ Project already exists${NC}"
+            exit 1
+        fi
+        
+        mkdir -p "$project_dir"
+        
+        # Copy project workspace template
+        if [ -f "$CORTEX_PATH/00-Templates/Project-Workspace.md" ]; then
+            cp "$CORTEX_PATH/00-Templates/Project-Workspace.md" "$project_dir/Project-Workspace.md"
+            
+            # Replace template variables
+            sed -i '' "s/{{PROJECT_NAME}}/$project_name/g" "$project_dir/Project-Workspace.md"
+            sed -i '' "s/{{START_DATE}}/$(date +%Y-%m-%d)/g" "$project_dir/Project-Workspace.md"
+            
+            echo "✅ Project created: $project_dir"
+            echo "📝 Workspace: $project_dir/Project-Workspace.md"
+        else
+            echo -e "${RED}❌ Project template not found${NC}"
+        fi
+        ;;
+    "templates")
+        # DEPRECATED - Templates now managed via cortex-cli config system
+        echo -e "${YELLOW}⚠️  DEPRECATED: Templates now managed via CLI config${NC}"
+        echo -e "${BLUE}   Use cortex-cli configuration system instead${NC}"
+        echo ""
+        echo -e "${RED}   This function will be removed in v3.0${NC}"
+        ;;
+    "sync")
+        CROSS_VAULT_PATH="$CORTEX_PATH/00-System/Cross-Vault-Linker"
+        case "$2" in
+            "start"|"")
+                echo -e "${BLUE}🔄 Starting scheduled sync...${NC}"
+                if [ -f "$CROSS_VAULT_PATH/scheduled_sync.py" ]; then
+                    interval=${3:-15}  # Default 15 minutes
+                    echo "Starting sync with $interval minute intervals"
+                    echo "🔄 Sync will run in background. Use 'cortex sync status' to monitor."
+                    cd "$CROSS_VAULT_PATH"
+                    nohup python3 scheduled_sync.py --interval "$interval" > /dev/null 2>&1 &
+                    echo $! > /tmp/cortex_sync.pid
+                    echo "✅ Scheduled sync started (PID: $(cat /tmp/cortex_sync.pid))"
+                else
+                    echo -e "${RED}❌ Scheduled sync not available${NC}"
+                fi
+                ;;
+            "stop")
+                echo -e "${BLUE}🛑 Stopping scheduled sync...${NC}"
+                if [ -f /tmp/cortex_sync.pid ]; then
+                    pid=$(cat /tmp/cortex_sync.pid)
+                    if kill -0 "$pid" 2>/dev/null; then
+                        kill "$pid"
+                        rm /tmp/cortex_sync.pid
+                        echo "✅ Scheduled sync stopped"
+                    else
+                        echo "⚠️  Process already stopped"
+                        rm /tmp/cortex_sync.pid
+                    fi
+                else
+                    echo "⚠️  No running sync process found"
+                fi
+                ;;
+            "status")
+                echo -e "${BLUE}📊 Scheduled Sync Status${NC}"
+                if [ -f /tmp/cortex_sync.pid ]; then
+                    pid=$(cat /tmp/cortex_sync.pid)
+                    if kill -0 "$pid" 2>/dev/null; then
+                        echo "✅ Sync process running (PID: $pid)"
+                        
+                        # Show recent sync activity
+                        recent_summaries=$(find "$CORTEX_PATH/02-Neural-Links/Summaries" -name "Cross-Vault Link Summary*.md" -type f -exec stat -f "%m %N" {} \; 2>/dev/null | sort -nr | head -3)
+                        if [ -n "$recent_summaries" ]; then
+                            echo ""
+                            echo -e "${GREEN}📝 Recent Sync Activity:${NC}"
+                            echo "$recent_summaries" | while read timestamp filepath; do
+                                filename=$(basename "$filepath")
+                                date_str=$(date -r "$timestamp" "+%H:%M")
+                                echo "  🔗 $date_str - $filename"
+                            done
+                        fi
+                    else
+                        echo "❌ Process not running"
+                        rm /tmp/cortex_sync.pid
+                    fi
+                else
+                    echo "❌ No sync process running"
+                fi
+                ;;
+            *)
+                echo -e "${RED}❌ Unknown sync command: $2${NC}"
+                echo "Usage: cortex sync [start|stop|status] [interval]"
+                echo "  start [15]  - Start sync with interval (default: 15 minutes)"
+                echo "  stop        - Stop running sync"
+                echo "  status      - Show sync status"
+                ;;
+        esac
+        ;;
+    "watcher")
+        CROSS_VAULT_PATH="$CORTEX_PATH/00-System/Cross-Vault-Linker"
+        case "$2" in
+            "status"|"")
+                echo -e "${BLUE}👁️  File Watcher Status${NC}"
+                if [ -f "$CROSS_VAULT_PATH/watcher_control.py" ]; then
+                    cd "$CROSS_VAULT_PATH"
+                    python3 watcher_control.py status
+                else
+                    echo -e "${RED}❌ Watcher control not available${NC}"
+                fi
+                ;;
+            "enable")
+                echo -e "${BLUE}✅ Enabling file watcher...${NC}"
+                if [ -f "$CROSS_VAULT_PATH/watcher_control.py" ]; then
+                    cd "$CROSS_VAULT_PATH"
+                    python3 watcher_control.py enable
+                else
+                    echo -e "${RED}❌ Watcher control not available${NC}"
+                fi
+                ;;
+            "disable")
+                echo -e "${BLUE}❌ Disabling file watcher...${NC}"
+                if [ -f "$CROSS_VAULT_PATH/watcher_control.py" ]; then
+                    cd "$CROSS_VAULT_PATH"
+                    python3 watcher_control.py disable
+                else
+                    echo -e "${RED}❌ Watcher control not available${NC}"
+                fi
+                ;;
+            *)
+                echo -e "${RED}❌ Unknown watcher command: $2${NC}"
+                echo "Usage: cortex watcher [status|enable|disable]"
+                echo "  status   - Show watcher status"
+                echo "  enable   - Enable file watcher"
+                echo "  disable  - Disable file watcher"
+                ;;
+        esac
+        ;;
+    "help")
+        echo -e "${BLUE}🤖 Cortex v2.0 - Detailed Help${NC}"
+        echo ""
+        echo "Cortex is an AI-powered decision intelligence system that helps you make"
+        echo "better decisions through structured research, quantitative analysis, and"
+        echo "continuous learning from your decision-making patterns."
+        echo ""
+        echo -e "${GREEN}🎯 Core Features:${NC}"
+        echo "• Data-driven decision making with confidence scoring"
+        echo "• Automatic pattern recognition and best practice extraction"
+        echo "• Cross-project learning and knowledge transfer"
+        echo "• AI-assisted analysis and insight generation"
+        echo "• Performance monitoring and quality assurance"
+        echo ""
+        echo -e "${GREEN}📚 Documentation:${NC}"
+        echo "• Cortex Hub: Main navigation and system overview"
+        echo "• Performance Dashboard: Real-time metrics and analytics"
+        echo "• Pattern Library: Detected patterns and best practices"
+        echo "• Templates: Standardized workflows and structures"
+        echo ""
+        echo -e "${GREEN}🔗 Files:${NC}"
+        echo "• Hub: $CORTEX_PATH/Cortex-Hub.md"
+        echo "• Templates: $CORTEX_PATH/00-Templates/"
+        echo "• Service: $CORTEX_PATH/00-System/Services/"
+        echo ""
+        echo "For more information, run: cortex hub"
+        ;;
+    *)
+        echo -e "${RED}❌ Unknown command: $1${NC}"
+        echo "Run 'cortex' without arguments to see available commands"
+        exit 1
+        ;;
+esac

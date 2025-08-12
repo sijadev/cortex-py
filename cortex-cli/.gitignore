@@ -1,0 +1,147 @@
+# Python-spezifische Dateien
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+.pytest_cache
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+
+# Vim/Emacs
+*.swp
+*.swo
+*~
+\#*\#
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Cortex CLI-spezifische Ignores
+# =============================
+
+# Build-Artefakte
+build/
+dist/
+cortex_cli.egg-info/
+*.egg-info/
+
+# Lokale Entwicklung
+dev/
+local/
+sandbox/
+
+# Temporäre Dateien
+*.tmp
+*.temp
+.temp/
+
+# Test-Output
+test-output/
+test-results/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+logs/
+debug.log
+
+# Cache
+.cache/
+.cortex-cli-cache/
+
+# Backup-Dateien
+*.backup
+*.bak
+*.orig
+
+# Lokale Konfiguration
+config/local.yaml
+config/dev.yaml
+.env.local
+.env.dev
+
+# Installation/Setup temporäre Dateien
+install.log
+setup.log
+
+# Profiling
+.prof
+
+# Dokumentation Build
+docs/_build/
+docs/build/
+
+# Wheel-Dateien
+*.whl
+
+# Mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Bandit
+.bandit
+
+# Black
+.black
+
+# isort
+.isort.cfg
+
+# Flake8
+.flake8
+
+# Pre-commit
+.pre-commit-config.yaml.backup

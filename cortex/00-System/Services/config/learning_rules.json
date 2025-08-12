@@ -1,0 +1,65 @@
+{
+  "decision_quality_gates": {
+    "project_creation": {
+      "enabled": true,
+      "confidence_minimum": 0.75,
+      "required_adr": true,
+      "required_sources_minimum": 3,
+      "human_approval_required": true,
+      "auto_create_projects": false,
+      "create_proposals_only": true
+    },
+    "decision_validation": {
+      "enforce_confidence_calculation": true,
+      "require_quantitative_analysis": true,
+      "require_alternative_evaluation": true,
+      "require_risk_assessment": true
+    }
+  },
+  "pattern_rules": {
+    "decision_patterns": {
+      "min_confidence": 0.7,
+      "required_fields": ["decision", "outcome", "confidence"],
+      "analysis_window_days": 90
+    },
+    "project_patterns": {
+      "min_confidence": 0.6,
+      "required_fields": ["status", "duration", "success_metrics"],
+      "analysis_window_days": 180
+    },
+    "ai_session_patterns": {
+      "min_confidence": 0.8,
+      "required_fields": ["query_type", "effectiveness", "outcome"],
+      "analysis_window_days": 30
+    }
+  },
+  "quality_rules": {
+    "link_validation": {
+      "check_internal_links": true,
+      "check_external_links": false,
+      "ignore_patterns": ["^#", "^mailto:"]
+    },
+    "file_integrity": {
+      "check_file_sizes": true,
+      "check_modification_dates": true,
+      "suspicious_size_change_percent": 50
+    },
+    "performance_monitoring": {
+      "track_response_times": true,
+      "track_memory_usage": true,
+      "alert_on_degradation": true
+    }
+  },
+  "notification_rules": {
+    "high_priority": {
+      "pattern_confidence_threshold": 0.9,
+      "quality_issue_severity": "high",
+      "immediate_notify": true
+    },
+    "medium_priority": {
+      "pattern_confidence_threshold": 0.7,
+      "quality_issue_severity": "medium",
+      "batch_notify": true
+    }
+  }
+}

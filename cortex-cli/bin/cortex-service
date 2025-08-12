@@ -1,0 +1,72 @@
+#!/bin/bash
+# Cortex Learning Service Quick Command
+# Updated for new integrated CLI system (Phase 3B) - Now part of cortex-cli package
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CORTEX_CLI_PATH="$(dirname "$SCRIPT_DIR")"
+CORTEX_PATH="$(dirname "$CORTEX_CLI_PATH")"
+SERVICE_PATH="$CORTEX_PATH/00-System/Services"
+
+# Check if new CLI is available
+if [ -f "$CORTEX_CLI_PATH/cortex/cli/main.py" ] && command -v python3 >/dev/null 2>&1; then
+    USE_NEW_CLI=true
+    CLI_CMD="PYTHONPATH=$CORTEX_CLI_PATH python3 -m cortex.cli.main"
+else
+    USE_NEW_CLI=false
+fi
+
+case "$1" in
+    "")
+        if [ "$USE_NEW_CLI" = true ]; then
+            echo "🤖 Cortex Learning Service Quick Access (v3.0)"
+            echo "✨ Professional CLI Integration Available"
+        else
+            echo "🤖 Cortex Learning Service Quick Access (v2.0)"
+        fi
+        echo ""
+        echo "Usage: cortex-service {install|status|start|stop|logs|config}"
+        echo ""
+        echo "Commands:"
+        echo "  install  - Install the learning service"
+        echo "  status   - Show service status and statistics" 
+        echo "  start    - Start the service"
+        echo "  stop     - Stop the service"
+        echo "  logs     - View live service logs"
+        echo "  config   - Edit service configuration"
+        echo ""
+        echo "🧠 The service continuously learns from your Cortex data and"
+        echo "   automatically detects patterns, best practices, and insights!"
+        
+        if [ "$USE_NEW_CLI" = true ]; then
+            echo ""
+            echo "💡 Pro Tip: Use 'cortex ai' for advanced AI operations"
+            echo "   or 'cortex schedule' for automated task management!"
+        fi
+        ;;
+    "status")
+        if [ "$USE_NEW_CLI" = true ]; then
+            echo "🔄 Checking service status via Professional CLI..."
+            cd "$CORTEX_PATH" 
+            $CLI_CMD ai health 2>/dev/null || {
+                echo "📊 Professional AI status not available, using legacy check..."
+                bash "$SERVICE_PATH/manage_service.sh" status
+            }
+        else
+            if [ -f "$SERVICE_PATH/manage_service.sh" ]; then
+                bash "$SERVICE_PATH/manage_service.sh" status
+            else
+                echo "❌ Cortex Learning Service not found at $SERVICE_PATH"
+                echo "Please install it first or check the path."
+            fi
+        fi
+        ;;
+    *)
+        if [ -f "$SERVICE_PATH/manage_service.sh" ]; then
+            bash "$SERVICE_PATH/manage_service.sh" "$1"
+        else
+            echo "❌ Cortex Learning Service not found at $SERVICE_PATH"
+            echo "Please install it first or check the path."
+        fi
+        ;;
+esac

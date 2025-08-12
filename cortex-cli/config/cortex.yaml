@@ -1,0 +1,32 @@
+# Cortex Configuration File
+
+# Allgemeine Einstellungen
+general:
+  log_level: "info"
+  workspace_path: "."
+  
+# Linking-Einstellungen
+linking:
+  auto_link: true
+  min_confidence: 0.75
+  rules_path: "rules"
+  
+# Vault-Einstellungen
+vaults:
+  enabled: true
+  paths:
+    - "~/obsidian/vault1"
+    - "~/obsidian/vault2"
+    
+# Cortex-AI Integration
+cortex_ai:
+  enabled: false  # Auf true setzen, um Cortex-AI zu aktivieren
+  api_url: "http://localhost:8000"
+  storage:
+    type: "sqlite"
+    path: "../cortex-ai/data/cortex.db"
+  features:
+    chat_storage: true
+    auto_linking: true
+    link_validation: true
+    link_analysis: true
