@@ -46,15 +46,22 @@ cd /
 
 #### Allgemein
 - `status` - Workspace Status anzeigen
+	- Optional: `--cortex-path <Pfad>` für expliziten Workspace
+	- Optional: `--json` für maschinenlesbare Ausgabe
 - `init` - Neues Cortex Workspace initialisieren
+	- Optional: `--cortex-path <Pfad>` für Zielverzeichnis
+	- Optional: `--force` überschreibt bestehende Konfiguration
 - `--help` - Hilfe anzeigen
 
 #### AI-Befehle
 - `ai chat -m "Nachricht"` - Einmalige Chat-Nachricht
+	- Optional: `--vault-id <ID>` für spezifischen Vault (Standard: 1)
 - `ai chat -i` - Interaktiver Chat-Modus
 - `ai analyze -f /path/file.md` - Datei analysieren
+	- Optional: `--vault-id <ID>` für spezifischen Vault (Standard: 1)
 - `ai analyze -c "Text"` - Text analysieren
 - `ai validate` - Links validieren
+	- Optional: `--json` für maschinenlesbare Ausgabe
 
 #### Erweiterte Befehle
 - `analysis` - Analysis and learning commands

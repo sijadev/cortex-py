@@ -86,11 +86,14 @@ class CortexTestRunner(CliRunner):
     
     def invoke_with_workspace(self, cli, args, workspace=None, **kwargs):
         """Invoke CLI command with workspace context"""
+        import sys
+        print(f"[DEBUG] invoke_with_workspace: workspace={workspace}, args={args}", file=sys.stderr)
         if workspace:
             # Temporär in workspace-Verzeichnis wechseln
             original_cwd = os.getcwd()
             try:
                 os.chdir(workspace)
+                print(f"[DEBUG] CWD after chdir: {os.getcwd()}", file=sys.stderr)
                 result = self.invoke(cli, args, **kwargs)
             finally:
                 os.chdir(original_cwd)

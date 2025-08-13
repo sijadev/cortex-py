@@ -29,16 +29,24 @@ test = testing
 def run_tests(ctx, cortex_path, module, verbose, output_json):
     """Tests für Cortex-Komponenten ausführen"""
     
-    result = _run_tests_impl(
-        cortex_path=cortex_path,
-        module=module,
-        verbose=verbose or ctx.obj.get('verbose', False) if ctx.obj else False,
-        output_json=output_json
-    )
-    
-    # Im programmatischen Modus gibt die Funktion das Ergebnis zurück
-    if ctx.obj and ctx.obj.get('programmatic'):
-        return result
+    from .utils.error_handlers import handle_standard_error
+    try:
+        if not cortex_path or not Path(cortex_path).exists():
+            handle_standard_error(Exception("Cortex Workspace existiert nicht!"), operation_name="Tests ausführen", output_json=output_json, verbose=verbose)
+            sys.exit(1)
+        result = _run_tests_impl(
+            cortex_path=cortex_path,
+            module=module,
+            verbose=verbose or ctx.obj.get('verbose', False) if ctx.obj else False,
+            output_json=output_json
+        )
+        if not result.get('success', True):
+            sys.exit(1)
+        if ctx.obj and ctx.obj.get('programmatic'):
+            return result
+    except Exception as e:
+        handle_standard_error(e, operation_name="Tests ausführen", output_json=output_json, verbose=verbose)
+        sys.exit(1)
 
 @testing.command(name='analyze')
 @click.option('--cortex-path', type=click.Path(), 
@@ -49,14 +57,24 @@ def run_tests(ctx, cortex_path, module, verbose, output_json):
 def analyze_tests(ctx, cortex_path, report, output_json):
     """Testabdeckung und -qualität analysieren"""
     
-    result = _analyze_tests_impl(
-        cortex_path=cortex_path,
-        report=report,
-        output_json=output_json or ctx.obj.get('json_output', False) if ctx.obj else False
-    )
-    
-    if ctx.obj and ctx.obj.get('programmatic'):
-        return result
+    from .utils.error_handlers import handle_standard_error
+    try:
+        if not cortex_path or not Path(cortex_path).exists():
+            handle_standard_error(Exception("Cortex Workspace existiert nicht!"), operation_name="Testanalyse", output_json=output_json, verbose=ctx.obj.get('verbose', False) if ctx.obj else False)
+            sys.exit(1)
+        # Prüfe, ob das Pflichtargument --report gesetzt ist
+        if not report:
+            raise click.UsageError("Das Argument --report ist erforderlich!")
+        result = _analyze_tests_impl(
+            cortex_path=cortex_path,
+            report=report,
+            output_json=output_json or ctx.obj.get('json_output', False) if ctx.obj else False
+        )
+        if ctx.obj and ctx.obj.get('programmatic'):
+            return result
+    except Exception as e:
+        handle_standard_error(e, operation_name="Testanalyse", output_json=output_json, verbose=ctx.obj.get('verbose', False) if ctx.obj else False)
+        sys.exit(1)
 
 def _run_tests_impl(cortex_path, module=None, verbose=False, output_json=False):
     """Interne Implementierung für Tests ausführen"""
@@ -109,11 +127,13 @@ def _run_tests_impl(cortex_path, module=None, verbose=False, output_json=False):
 @click.pass_context
 def dashboard(ctx, cortex_path, port, output_format, output):
     """Starte Test-Dashboard"""
+    # Prüfe, ob das Pflichtargument --output gesetzt ist
+    if not output:
+        raise click.UsageError("Das Argument --output ist erforderlich!")
     console.print(f"[blue]🚀 Starting Test Dashboard on port {port}[/blue]")
     console.print(f"Dashboard URL: http://localhost:{port}")
     console.print(f"Output format: {output_format}")
-    if output:
-        console.print(f"Output file: {output}")
+    console.print(f"Output file: {output}")
     return {'dashboard_started': True, 'port': port, 'format': output_format, 'output': output}
 
 
@@ -153,19 +173,29 @@ def _analyze_tests_impl(cortex_path, report=None, output_json=False):
 @click.pass_context 
 def validate_tests(ctx, cortex_path, fix, input, output):
     """Validiere Test-Infrastruktur"""
-    console.print("[blue]Validating test infrastructure...[/blue]")
-    
-    results = {
-        'valid': True,
-        'issues_found': 2,
-        'issues_fixed': 2 if fix else 0,
-        'input_file': input,
-        'output_file': output
-    }
-    
-    if ctx.obj and ctx.obj.get('json_output'):
-        click.echo(json.dumps(results))
-    else:
-        console.print(f"[green]Validation complete. Issues: {results['issues_found']}[/green]")
-    
-    return results
+    from .utils.error_handlers import handle_standard_error
+    try:
+        if not cortex_path or not Path(cortex_path).exists():
+            handle_standard_error(Exception("Cortex Workspace existiert nicht!"), operation_name="Test-Validierung", output_json=ctx.obj.get('json_output', False) if ctx.obj else False, verbose=ctx.obj.get('verbose', False) if ctx.obj else False)
+            sys.exit(1)
+        # Prüfe, ob das Pflichtargument --input gesetzt ist
+        if not input:
+            raise click.UsageError("Das Argument --input ist erforderlich!")
+        console.print("[blue]Validating test infrastructure...[/blue]")
+        results = {
+            'valid': True,
+            'issues_found': 2,
+            'issues_fixed': 2 if fix else 0,
+            'input_file': input,
+            'output_file': output
+        }
+        if not results.get('valid', True):
+            sys.exit(1)
+        if ctx.obj and ctx.obj.get('json_output'):
+            click.echo(json.dumps(results))
+        else:
+            console.print(f"[green]Validation complete. Issues: {results['issues_found']}[/green]")
+        return results
+    except Exception as e:
+        handle_standard_error(e, operation_name="Test-Validierung", output_json=ctx.obj.get('json_output', False) if ctx.obj else False, verbose=ctx.obj.get('verbose', False) if ctx.obj else False)
+        sys.exit(1)
