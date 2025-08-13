@@ -99,15 +99,14 @@ class CortexAnalyzer:
         
     def analyze_links(self) -> Dict[str, Any]:
         """Analyze all links in the Cortex repository"""
+        import sys
+        print(f"[DEBUG] analyze_links called on {self} (type: {type(self)})", file=sys.stderr)
         logger.info("Starting link analysis for %s", self.cortex_path)
-        
         # Find all markdown files
         self._find_markdown_files()
-        
         # Analyze each file
         for md_file in self.markdown_files:
             self._analyze_file(md_file)
-        
         # Compile results
         results = {
             'timestamp': datetime.now().isoformat(),
@@ -119,8 +118,8 @@ class CortexAnalyzer:
             },
             'broken_links': self.broken_links
         }
-        
         logger.info("Analysis complete: %d broken links found", len(self.broken_links))
+        print(f"[DEBUG] analyze_links result: {results}", file=sys.stderr)
         return results
     
     def _find_markdown_files(self):

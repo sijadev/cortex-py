@@ -47,12 +47,12 @@ cli.add_command(testing.test, name='test')
 cli.add_command(ai)  # Neue AI-Befehle
 
 if __name__ == '__main__':
+    from .utils.error_handlers import handle_standard_error
     try:
         cli()  # pylint: disable=no-value-for-parameter
     except Exception as e:
-        console.print(f"[red]Fehler: {str(e)}[/red]")
-        if '--verbose' in sys.argv or '-v' in sys.argv:
-            console.print_exception()
+        # Nutze zentralen Error-Handler für konsistente Fehlerausgabe
+        handle_standard_error(e, operation_name="Cortex CLI", output_json='--json' in sys.argv, verbose='--verbose' in sys.argv or '-v' in sys.argv)
         sys.exit(1)
 
 def find_cortex_root(start_path='.'):
