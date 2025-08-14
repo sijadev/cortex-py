@@ -1,0 +1,12 @@
+@startuml
+' AI Workflow Sequence Diagram
+actor User
+User -> DataIngestion: provide_data()
+DataIngestion -> Preprocessing: preprocess_data()
+Preprocessing -> ModelTrainer: train_model()
+ModelTrainer -> ModelEvaluator: evaluate_model()
+ModelEvaluator -> ModelDeployer: deploy_model()
+ModelDeployer -> LocalAIEngine: serve_predictions()
+LocalAIEngine -> User: return_results()
+@enduml
+

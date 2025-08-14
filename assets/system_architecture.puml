@@ -1,0 +1,40 @@
+@startuml
+' System Architecture Component Diagram
+package "CLI Layer" {
+  [CortexCLI]
+}
+package "Core Layer" {
+  [AIEngine]
+  [FileWatcher]
+  [ResearchCore]
+}
+package "Neo4j Layer" {
+  [MigrationManager]
+  [BackupManager]
+  [WorkflowCreator]
+  [StructureValidator]
+}
+package "Integrations" {
+  [ExternalAI]
+  [OtherServices]
+}
+package "Utils" {
+  [Helpers]
+}
+
+[CortexCLI] --> [AIEngine]
+[CortexCLI] --> [FileWatcher]
+[CortexCLI] --> [ResearchCore]
+[CortexCLI] --> [MigrationManager]
+[CortexCLI] --> [WorkflowCreator]
+[CortexCLI] --> [StructureValidator]
+
+[AIEngine] --> [ExternalAI]
+[MigrationManager] --> [BackupManager]
+[MigrationManager] --> [WorkflowCreator]
+[WorkflowCreator] --> [StructureValidator]
+
+[Core Layer] ..> [Utils]
+[Neo4j Layer] ..> [Utils]
+@enduml
+

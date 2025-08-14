@@ -5,7 +5,7 @@ from pathlib import Path
 
 def test_list_workflows():
     # Bevorzugt das venv-Python, fällt auf aktuelles Python zurück
-    repo_root = Path(__file__).resolve().parent
+    repo_root = Path(__file__).resolve().parent.parent
     venv_python = repo_root / ".venv" / "bin" / "python"
     python_exec = str(venv_python) if venv_python.exists() else sys.executable
 
@@ -17,11 +17,11 @@ def test_list_workflows():
     # Create a workflow before listing
     subprocess.run([
         python_exec, "cortex_neo/cortex_cli.py", "create-workflow", "TestWorkflow"],
-        capture_output=True, text=True, env=env
+        capture_output=True, text=True, env=env, cwd=repo_root
     )
     result = subprocess.run([
         python_exec, "cortex_neo/cortex_cli.py", "list-workflows"
-    ], capture_output=True, text=True, env=env)
+    ], capture_output=True, text=True, env=env, cwd=repo_root)
     assert result.returncode == 0, f"Fehler beim Ausführen: {result.stderr}"
     assert "Workflow" in result.stdout or result.stdout.strip() != "", "Keine Workflows gefunden oder Ausgabe leer."
     print("[OK] list-workflows gibt Workflows aus:")

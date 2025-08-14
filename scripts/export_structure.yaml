@@ -1,0 +1,74 @@
+{
+  "notes": [
+    "Die Geschichte von Python",
+    "E1",
+    "E2",
+    "Guido van Rossum",
+    "New Cortex Project",
+    "Python 1.0",
+    "Python 2.0",
+    "Python 3.0",
+    "Python Content Test",
+    "Python Content Test 2",
+    "Python Geschichte",
+    "Python Vollständige Info",
+    "Test Content Note",
+    "Test Note mit Content"
+  ],
+  "templates": [
+    "Programmiersprache-Geschichte"
+  ],
+  "tags": [
+    "geschichte",
+    "programmierung",
+    "python"
+  ],
+  "links": [
+    {
+      "from": "E1",
+      "to": "E2"
+    },
+    {
+      "from": "Guido van Rossum",
+      "to": "Python Geschichte"
+    },
+    {
+      "from": "Python 1.0",
+      "to": "Python 2.0"
+    },
+    {
+      "from": "Python 2.0",
+      "to": "Python 3.0"
+    },
+    {
+      "from": "Python Geschichte",
+      "to": "Guido van Rossum"
+    },
+    {
+      "from": "Python Geschichte",
+      "to": "Python 1.0"
+    }
+  ],
+  "assignments": {
+    "uses_template": [
+      {
+        "note": "Python Geschichte",
+        "template": "Programmiersprache-Geschichte"
+      }
+    ],
+    "tagged_with": [
+      {
+        "note": "Guido van Rossum",
+        "tag": "python"
+      },
+      {
+        "note": "Python Geschichte",
+        "tag": "geschichte"
+      },
+      {
+        "note": "Python Geschichte",
+        "tag": "python"
+      }
+    ]
+  }
+}

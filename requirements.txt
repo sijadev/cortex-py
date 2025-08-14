@@ -1,1 +1,15 @@
-neo4j
+# Cortex-py Dependencies
+# MCP Server
+mcp>=1.0.0
+
+# Neo4j Database
+neo4j>=5.0.0
+
+# CLI Framework
+click>=8.0.0
+
+# Optional: YAML support for imports/exports
+pyyaml>=6.0.0
+
+# HTTP requests (if needed)
+requests>=2.25.0

@@ -56,7 +56,7 @@ fi
 # Cortex-AI Abhängigkeiten
 if [ $INSTALL_AI -eq 1 ]; then
     echo -e "${BLUE}🔧 Installiere Cortex-AI Abhängigkeiten...${NC}"
-    pip install uvicorn fastapi sqlalchemy || handle_error "Cortex-AI Abhängigkeiten konnten nicht installiert werden"
+    pip install mcp neo4j || handle_error "Cortex-AI Abhängigkeiten konnten nicht installiert werden"
 fi
 
 # Ausführungsrechte setzen
