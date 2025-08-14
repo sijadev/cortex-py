@@ -6,7 +6,16 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CORTEX_CLI_PATH="$(dirname "$SCRIPT_DIR")"
 CORTEX_PATH="$(dirname "$CORTEX_CLI_PATH")"
-CORTEX_AI_PATH="${CORTEX_PATH}/cortex-ai"
+# Support both folder names for compatibility
+CORTEX_AI_PATH_UNDERSCORE="${CORTEX_PATH}/cortex_ai"
+CORTEX_AI_PATH_HYPHEN="${CORTEX_PATH}/cortex-ai"
+if [ -d "$CORTEX_AI_PATH_UNDERSCORE" ]; then
+  CORTEX_AI_PATH="$CORTEX_AI_PATH_UNDERSCORE"
+elif [ -d "$CORTEX_AI_PATH_HYPHEN" ]; then
+  CORTEX_AI_PATH="$CORTEX_AI_PATH_HYPHEN"
+else
+  CORTEX_AI_PATH="${CORTEX_PATH}/cortex_ai" # default
+fi
 
 # Color codes for better output
 GREEN='\033[0;32m'
@@ -25,13 +34,26 @@ handle_error() {
 # Check for uvicorn
 if ! command -v uvicorn &>/dev/null; then
     echo -e "${YELLOW}⚠️ Uvicorn nicht gefunden. Installation wird durchgeführt...${NC}"
-    pip install uvicorn || handle_error "Uvicorn konnte nicht installiert werden"
+    python3 -m pip install uvicorn || handle_error "Uvicorn konnte nicht installiert werden"
 fi
 
-# Parse command line arguments
-PORT=8000
+# Ensure FastAPI and neo4j driver are available
+if ! python3 -c "import fastapi" &>/dev/null; then
+    echo -e "${YELLOW}⚠️ FastAPI nicht gefunden. Installation wird durchgeführt...${NC}"
+    python3 -m pip install fastapi || handle_error "FastAPI konnte nicht installiert werden"
+fi
+if ! python3 -c "import neo4j" &>/dev/null; then
+    echo -e "${YELLOW}⚠️ Neo4j Python-Treiber nicht gefunden. Installation wird durchgeführt...${NC}"
+    python3 -m pip install neo4j || handle_error "Neo4j-Treiber konnte nicht installiert werden"
+fi
+
+# Defaults (allow environment to override)
+PORT="${PORT:-8000}"
+HOST="${HOST:-127.0.0.1}"
+OPEN_PATH="${OPEN_PATH:-/chat}"
 NO_BROWSER=0
 
+# Parse command line arguments
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --port=*)
@@ -39,6 +61,13 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         --port)
             PORT="$2"
+            shift
+            ;;
+        --host=*)
+            HOST="${1#*=}"
+            ;;
+        --host)
+            HOST="$2"
             shift
             ;;
         --no-browser)
@@ -57,11 +86,11 @@ if [ ! -d "$CORTEX_AI_PATH" ]; then
 fi
 
 # Start the server
-echo -e "${BLUE}🚀 Starte Cortex-AI Server auf Port $PORT...${NC}"
+echo -e "${BLUE}🚀 Starte Cortex-AI Server auf http://${HOST}:${PORT}...${NC}"
 cd "$CORTEX_AI_PATH"
 
 # Start server in background
-uvicorn app.main:app --reload --port=$PORT &
+uvicorn app.main:app --reload --host "$HOST" --port "$PORT" &
 SERVER_PID=$!
 
 # Wait for server to start
@@ -70,16 +99,25 @@ sleep 3
 
 # Check if server started successfully
 if ! kill -0 $SERVER_PID 2>/dev/null; then
-    handle_error "Server konnte nicht gestartet werden"
+    handle_error "Server konnte nicht gestartet werden (Host/Port belegt oder Fehler beim Start)"
 fi
 
 # Open browser
 if [ $NO_BROWSER -eq 0 ]; then
     echo -e "${GREEN}✅ Öffne Browser...${NC}"
-    "$BROWSER" "http://localhost:$PORT" || echo -e "${YELLOW}⚠️ Browser konnte nicht geöffnet werden${NC}"
+    URL="http://${HOST}:${PORT}${OPEN_PATH}"
+    if [ -n "$BROWSER" ]; then
+        "$BROWSER" "$URL" || echo -e "${YELLOW}⚠️ Browser konnte nicht geöffnet werden${NC}"
+    elif command -v open &>/dev/null; then
+        open "$URL" || echo -e "${YELLOW}⚠️ Browser konnte nicht geöffnet werden${NC}"
+    elif command -v xdg-open &>/dev/null; then
+        xdg-open "$URL" || echo -e "${YELLOW}⚠️ Browser konnte nicht geöffnet werden${NC}"
+    else
+        echo -e "${YELLOW}⚠️ Kein Browser-Öffner gefunden. Öffne manuell: $URL${NC}"
+    fi
 fi
 
-echo -e "${GREEN}✅ Cortex-AI läuft auf http://localhost:$PORT${NC}"
+echo -e "${GREEN}✅ Cortex-AI läuft auf http://${HOST}:${PORT}${NC}"
 echo -e "${YELLOW}Drücke Strg+C zum Beenden${NC}"
 
 # Trap Ctrl+C

@@ -5,25 +5,24 @@ Tests for cortex/core/ai_engine.py (currently 0% coverage)
 """
 
 import pytest
-import tempfile
 import json
+import sys
 from pathlib import Path
 from datetime import datetime
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import patch
+
+# Add project root to path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
 # Import the critical AI Engine components
-try:
-    from cortex.core.ai_engine import (
-        KnowledgeGap, 
-        ResearchResult,
-        AIEngine
-    )
-    AI_ENGINE_AVAILABLE = True
-except ImportError:
-    AI_ENGINE_AVAILABLE = False
+from cortex.core.ai_engine import (
+    KnowledgeGap,
+    ResearchResult,
+    CortexAIEngine as AIEngine
+)
 
-
-@pytest.mark.skipif(not AI_ENGINE_AVAILABLE, reason="AI Engine components not available")
+# No longer skip tests, we will mock the DB connection
 class TestAIEngineCore:
     """Test suite for critical AI Engine functionality"""
     
@@ -68,19 +67,23 @@ class TestAIEngineCore:
         assert result.currency_score == 0.7
         assert result.extracted_data["key"] == "value"
     
-    @patch('cortex.core.ai_engine.Path.exists')
-    def test_ai_engine_initialization(self, mock_exists):
+    @patch('cortex.core.local_ai.Neo4jConnector')
+    def test_ai_engine_initialization(self, MockNeo4jConnector):
         """Test AI Engine initialization - critical path"""
-        mock_exists.return_value = True
-        
+        # Mock the connector to prevent actual DB connection
+        mock_instance = MockNeo4jConnector.return_value
+        mock_instance.verify_connectivity.return_value = None # Simulate successful connection
+
         try:
             # Try to initialize AI Engine
             engine = AIEngine()
             assert engine is not None
+            assert engine.local_ai is not None
+            # Check that the mocked connector was used
+            MockNeo4jConnector.assert_called_once()
         except Exception as e:
-            # If initialization fails, at least we detect it
-            pytest.skip(f"AI Engine initialization failed: {e}")
-    
+            pytest.fail(f"AI Engine initialization failed with mocked DB: {e}")
+
     def test_knowledge_gap_serialization(self):
         """Test that KnowledgeGap can be serialized/deserialized"""
         gap = KnowledgeGap(
@@ -147,29 +150,52 @@ class TestAIEngineCore:
             assert gap.priority == priority
     
     @pytest.mark.asyncio
-    async def test_ai_engine_async_methods(self):
-        """Test async methods exist and can be mocked"""
-        with patch('cortex.core.ai_engine.AIEngine') as MockEngine:
-            mock_instance = AsyncMock()
-            MockEngine.return_value = mock_instance
-            
-            engine = MockEngine()
-            
-            # Test that async methods can be called
-            mock_instance.detect_gaps.return_value = []
-            gaps = await engine.detect_gaps()
-            assert gaps == []
-            
-            mock_instance.research_gap.return_value = None
-            result = await engine.research_gap("test_gap")
-            assert result is None
+    @patch('cortex.core.ai_engine.CortexAIEngine.save_detected_gaps')
+    async def test_research_gap_async_method(self, mock_save_gaps):
+        """Test the research_gap async method with a mocked local_ai."""
+        with patch('cortex.core.local_ai.Neo4jConnector'):
+            engine = AIEngine()
+
+            # Create a sample gap and add it to the engine
+            gap = KnowledgeGap(
+                gap_id="test_gap_001",
+                gap_type="incomplete_research",
+                title="Test Gap for 'Node1'",
+                description="A test gap.",
+                context="Some context about 'Node1'",
+                priority="high",
+                confidence=0.9,
+                research_queries=[],
+                detected_date=datetime.now().isoformat()
+            )
+            engine.detected_gaps.append(gap)
+
+            # Mock the method that the engine's logic depends on
+            with patch.object(engine.local_ai, 'suggest_links_for_node') as mock_suggest:
+                mock_suggest.return_value = [{'potential_link': 'Node2', 'common_neighbors_score': 5}]
+
+                # Call the method under test
+                result_gap = await engine.research_gap("test_gap_001")
+
+                # Assertions
+                mock_suggest.assert_called_once_with('Node1')
+                assert result_gap is not None
+                assert result_gap.gap_id == "test_gap_001"
+
+                # Check that a research result was added
+                assert "test_gap_001" in engine.research_results
+                research_result = engine.research_results["test_gap_001"][0]
+                assert research_result.source_url == "local_ai_graph_analysis"
+                assert "Node2" in research_result.content
+                mock_save_gaps.assert_called_once()
 
 
-@pytest.mark.skipif(not AI_ENGINE_AVAILABLE, reason="AI Engine components not available")  
+# No longer skip tests
 class TestAIEngineIntegration:
-    """Integration tests for AI Engine with file system"""
-    
-    def test_ai_engine_data_structures(self):
+    """Integration tests for AI Engine with a mocked file system and DB"""
+
+    @patch('cortex.core.local_ai.Neo4jConnector')
+    def test_ai_engine_data_structures(self, MockNeo4jConnector):
         """Test that all required data structures are available"""
         # Test that classes can be imported and instantiated
         assert KnowledgeGap is not None
@@ -191,62 +217,3 @@ class TestAIEngineIntegration:
             assert gap.gap_id == "integration_test"
         except Exception as e:
             pytest.fail(f"Basic KnowledgeGap instantiation failed: {e}")
-    
-    @patch('pathlib.Path.mkdir')
-    @patch('pathlib.Path.exists')
-    def test_ai_engine_file_system_setup(self, mock_exists, mock_mkdir):
-        """Test that AI Engine sets up required directories"""
-        mock_exists.return_value = False
-        
-        try:
-            # This should attempt to create directories
-            engine = AIEngine()
-            # If we get here, directory setup worked
-            assert mock_mkdir.called or True  # Either mkdir was called or dirs existed
-        except Exception as e:
-            # Log the exception but don't fail - we're testing the critical path exists
-            pytest.skip(f"AI Engine file system setup issue: {e}")
-
-
-class TestAIEngineRiskMitigation:
-    """Critical risk mitigation tests - these should always run"""
-    
-    def test_ai_engine_import_safety(self):
-        """Test that AI Engine can be safely imported"""
-        try:
-            from cortex.core import ai_engine
-            assert ai_engine is not None
-        except ImportError as e:
-            pytest.fail(f"Critical: AI Engine module cannot be imported: {e}")
-    
-    def test_dataclass_definitions(self):
-        """Test that critical dataclasses are properly defined"""
-        if not AI_ENGINE_AVAILABLE:
-            pytest.skip("AI Engine not available - structural test skipped")
-        
-        # Test KnowledgeGap has all required fields
-        import inspect
-        from cortex.core.ai_engine import KnowledgeGap
-        
-        sig = inspect.signature(KnowledgeGap)
-        required_params = [
-            'gap_id', 'gap_type', 'title', 'description', 'context',
-            'priority', 'confidence', 'research_queries', 'detected_date'
-        ]
-        
-        for param in required_params:
-            assert param in sig.parameters, f"Missing required parameter: {param}"
-    
-    def test_module_structure(self):
-        """Test that AI Engine module has expected structure"""
-        try:
-            import cortex.core.ai_engine as ai_engine
-            
-            # Test that module has expected attributes
-            expected_classes = ['KnowledgeGap', 'ResearchResult']
-            
-            for class_name in expected_classes:
-                assert hasattr(ai_engine, class_name), f"Missing class: {class_name}"
-                
-        except ImportError:
-            pytest.skip("AI Engine module structure test skipped - import failed")

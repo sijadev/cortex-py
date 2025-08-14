@@ -1,0 +1,26 @@
+# Profile: Mixed tags and template contribute to weight
+initial:
+  notes: [M1, M2]
+  tags: [t1, t2]
+  templates: [Tpl]
+  assignments:
+    tagged_with:
+      - { note: M1, tag: t1 }
+      - { note: M1, tag: t2 }
+      - { note: M2, tag: t1 }
+      - { note: M2, tag: t2 }
+    uses_template:
+      - { note: M1, template: Tpl }
+      - { note: M2, template: Tpl }
+actions:
+  - auto_link:
+      by: all
+      min_shared: 1
+      max_per_note: 10
+expected:
+  notes: [M1, M2]
+  tags: [t1, t2]
+  templates: [Tpl]
+  links:
+    - { from: M1, to: M2, auto: true, tags_shared: 2, templates_shared: 1, weight: 3 }
+

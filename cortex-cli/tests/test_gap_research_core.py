@@ -4,12 +4,17 @@ Test suite for Gap Research - Critical Risk Mitigation
 Tests for cortex/integrations/gap_research.py (currently 0% coverage)
 """
 
-import pytest
-import json
-import tempfile
+import sys
 from pathlib import Path
+# Add project root to path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+import pytest
+from unittest.mock import AsyncMock
+import json
 from datetime import datetime
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import patch
 
 # Import Gap Research components
 try:
@@ -20,6 +25,10 @@ try:
     )
     GAP_RESEARCH_AVAILABLE = True
 except ImportError:
+    # Define dummy classes to allow test skipping
+    class ResearchResult: pass
+    class KnowledgeGap: pass
+    class GapResearchIntegrator: pass
     GAP_RESEARCH_AVAILABLE = False
 
 

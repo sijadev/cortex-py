@@ -1,0 +1,24 @@
+# Profile: Backfill tags_shared and recompute weight on auto links
+initial:
+  notes: [B1, B2]
+  tags: [t1]
+  assignments:
+    tagged_with:
+      - { note: B1, tag: t1 }
+      - { note: B2, tag: t1 }
+  # Seed an auto link missing properties
+  links_props:
+    - { from: B1, to: B2, props: { auto: true } }
+actions:
+  - link_fix:
+      remove_self: false
+      dedupe: false
+      backfill_shared: true
+      recompute_weight: true
+expected:
+  notes: [B1, B2]
+  tags: [t1]
+  templates: []
+  links:
+    - { from: B1, to: B2, auto: true, tags_shared: 1, templates_shared: 0, weight: 1 }
+

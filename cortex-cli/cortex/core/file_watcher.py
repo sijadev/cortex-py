@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-File Watcher for Real-time Obsidian Sync - Cortex CLI Edition
+Neo Watcher for Real-time Obsidian Sync - Cortex CLI Edition
 Monitors workspace changes and triggers automatic AI analysis and sync
 """
 
@@ -36,8 +36,8 @@ class FileChangeEvent:
     tags_detected: List[str] = None
 
 @dataclass
-class WatcherConfig:
-    """Configuration for the file watcher"""
+class NeoWatcherConfig:
+    """Configuration for the neo watcher"""
     watch_patterns: List[str]  # File patterns to watch
     ignore_patterns: List[str]  # Patterns to ignore
     debounce_seconds: int  # Debounce delay for rapid changes
@@ -45,14 +45,14 @@ class WatcherConfig:
     analysis_delay: int  # Delay before triggering AI analysis
     max_file_size_mb: int  # Maximum file size to process
 
-class WorkspaceFileHandler(FileSystemEventHandler):
-    """Handler for file system events in workspace areas"""
-    
-    def __init__(self, watcher: 'WorkspaceFileWatcher', area_name: str):
+class WorkspaceNeoHandler(FileSystemEventHandler):
+    """Handler for file system events in workspace areas (NeoWatcher)"""
+
+    def __init__(self, watcher: 'WorkspaceNeoWatcher', area_name: str):
         self.watcher = watcher
         self.area_name = area_name
-        self.logger = logging.getLogger(f'FileHandler.{area_name}')
-    
+        self.logger = logging.getLogger(f'NeoHandler.{area_name}')
+
     def on_created(self, event):
         if not event.is_directory:
             self._handle_file_event('created', event.src_path)
@@ -105,16 +105,16 @@ class WorkspaceFileHandler(FileSystemEventHandler):
         except Exception as e:
             self.logger.error(f"Error handling file event {event_type} for {file_path}: {e}")
 
-class WorkspaceFileWatcher:
-    """Watches workspace files for changes and triggers sync operations"""
-    
-    def __init__(self, workspace_path: str = None, config: Optional[WatcherConfig] = None, enabled: bool = True):
+class WorkspaceNeoWatcher:
+    """Main watcher for workspace areas (NeoWatcher)"""
+
+    def __init__(self, workspace_path: str = None, config: Optional[NeoWatcherConfig] = None, enabled: bool = True):
         self.workspace_path = Path(workspace_path) if workspace_path else Path.cwd()
         self.logger = logging.getLogger(self.__class__.__name__)
         self.enabled = enabled
         
         # Default configuration
-        self.config = config or WatcherConfig(
+        self.config = config or NeoWatcherConfig(
             watch_patterns=['*.md', '*.txt', '*.py', '*.yaml', '*.yml', '*.json'],
             ignore_patterns=['.*', '*.tmp', '*~', '*.log', '*/__pycache__/*', '*/.venv/*', '*/.git/*'],
             debounce_seconds=2,
@@ -147,7 +147,7 @@ class WorkspaceFileWatcher:
         }
         
         if not self.enabled:
-            self.logger.info("File watcher is disabled")
+            self.logger.info("Neo watcher is disabled")
             # Still discover areas for status reporting
             self._discover_workspace_areas()
             return
@@ -194,7 +194,7 @@ class WorkspaceFileWatcher:
     async def start_watching(self):
         """Start watching workspace files"""
         if not self.enabled:
-            self.logger.info("File watcher is disabled, not starting")
+            self.logger.info("Neo watcher is disabled, not starting")
             return False
             
         if not WATCHDOG_AVAILABLE:
@@ -208,7 +208,7 @@ class WorkspaceFileWatcher:
             
             # Start file system observers
             for area_name, area_path in self.watched_areas.items():
-                handler = WorkspaceFileHandler(self, area_name)
+                handler = WorkspaceNeoHandler(self, area_name)
                 observer = Observer()
                 observer.schedule(handler, area_path, recursive=True)
                 observer.start()
@@ -221,11 +221,11 @@ class WorkspaceFileWatcher:
             # Start periodic analysis task
             asyncio.create_task(self._periodic_analysis())
             
-            self.logger.info(f"File watcher started successfully. Watching {len(self.watched_areas)} areas.")
+            self.logger.info(f"Neo watcher started successfully. Watching {len(self.watched_areas)} areas.")
             return True
             
         except Exception as e:
-            self.logger.error(f"Error starting file watcher: {e}")
+            self.logger.error(f"Error starting neo watcher: {e}")
             await self.stop_watching()
             return False
     
@@ -239,8 +239,8 @@ class WorkspaceFileWatcher:
             observer.join()
         
         self.observers.clear()
-        self.logger.info("File watcher stopped")
-    
+        self.logger.info("Neo watcher stopped")
+
     async def _process_changes(self):
         """Process queued file changes"""
         while self.is_running:
@@ -477,7 +477,7 @@ class WorkspaceFileWatcher:
             self.logger.error(f"Error in manual analysis trigger: {e}")
             return False
     
-    def update_config(self, new_config: WatcherConfig):
+    def update_config(self, new_config: NeoWatcherConfig):
         """Update watcher configuration"""
         self.config = new_config
         self.logger.info("Watcher configuration updated")
@@ -497,7 +497,7 @@ class WorkspaceFileWatcher:
             # If already running, start watching the new area
             if self.is_running and WATCHDOG_AVAILABLE:
                 try:
-                    handler = WorkspaceFileHandler(self, area_name)
+                    handler = WorkspaceNeoHandler(self, area_name)
                     observer = Observer()
                     observer.schedule(handler, area_path, recursive=True)
                     observer.start()

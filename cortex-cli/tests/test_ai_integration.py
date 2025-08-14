@@ -1,9 +1,14 @@
 """
 Tests für die Cortex-AI Integration
 """
-import pytest
-from unittest.mock import patch, MagicMock
+import sys
 from pathlib import Path
+# Add project root to path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+import pytest
+from unittest.mock import patch
 
 from cortex.cli.ai import chat, analyze, validate
 from tests.enhanced_test_utils import CortexTestRunner, mock_cortex_ai_client

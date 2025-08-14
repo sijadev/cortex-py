@@ -1,0 +1,19 @@
+# Profile: Auto-link should not create links if min_shared not met
+initial:
+  notes: [N1, N2]
+  tags: [t1]
+  assignments:
+    tagged_with:
+      - { note: N1, tag: t1 }
+      # N2 has no tags, so shared=0
+actions:
+  - auto_link:
+      by: tag
+      min_shared: 2
+      max_per_note: 10
+expected:
+  notes: [N1, N2]
+  tags: [t1]
+  templates: []
+  links: []
+

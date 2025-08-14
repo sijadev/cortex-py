@@ -1,0 +1,18 @@
+# Profile: Dedupe multiple parallel links without touching anything else
+initial:
+  notes: [D1, D2]
+  duplicate_links:
+    - { from: D1, to: D2, count: 4 }
+actions:
+  - link_fix:
+      remove_self: false
+      dedupe: true
+      backfill_shared: false
+      recompute_weight: false
+expected:
+  notes: [D1, D2]
+  tags: []
+  templates: []
+  links:
+    - { from: D1, to: D2 }
+

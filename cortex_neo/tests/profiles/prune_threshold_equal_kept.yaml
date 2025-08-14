@@ -1,0 +1,19 @@
+# Profile: Auto-link with weight equal to threshold should be kept (prune uses < threshold)
+initial:
+  notes: [E1, E2]
+  links_props:
+    - { from: E1, to: E2, props: { auto: true, weight: 1, tags_shared: 1, templates_shared: 0 } }
+actions:
+  - link_fix:
+      remove_self: false
+      dedupe: false
+      backfill_shared: false
+      recompute_weight: false
+      remove_auto_below: 1
+expected:
+  notes: [E1, E2]
+  tags: []
+  templates: []
+  links:
+    - { from: E1, to: E2, auto: true, weight: 1, tags_shared: 1, templates_shared: 0 }
+

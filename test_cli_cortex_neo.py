@@ -14,8 +14,13 @@ def test_list_workflows():
     env.setdefault("NEO4J_USER", "neo4j")
     env.setdefault("NEO4J_PASSWORD", "neo4jtest")
 
+    # Create a workflow before listing
+    subprocess.run([
+        python_exec, "cortex_neo/cortex_cli.py", "create-workflow", "TestWorkflow"],
+        capture_output=True, text=True, env=env
+    )
     result = subprocess.run([
-        python_exec, "cortex-neo/cortex_cli.py", "list-workflows"
+        python_exec, "cortex_neo/cortex_cli.py", "list-workflows"
     ], capture_output=True, text=True, env=env)
     assert result.returncode == 0, f"Fehler beim Ausführen: {result.stderr}"
     assert "Workflow" in result.stdout or result.stdout.strip() != "", "Keine Workflows gefunden oder Ausgabe leer."

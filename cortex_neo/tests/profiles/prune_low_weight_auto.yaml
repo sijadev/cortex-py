@@ -1,0 +1,19 @@
+# Profile: Prune auto-links with weight below threshold
+initial:
+  notes: [C, D]
+  # Seed an auto link with weight 0 that should be pruned
+  links_props:
+    - { from: C, to: D, props: { auto: true, weight: 0, tags_shared: 0, templates_shared: 0 } }
+actions:
+  - link_fix:
+      remove_self: false
+      dedupe: false
+      backfill_shared: false
+      recompute_weight: false
+      remove_auto_below: 1
+expected:
+  notes: [C, D]
+  tags: []
+  templates: []
+  links: []
+

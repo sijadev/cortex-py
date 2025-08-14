@@ -15,16 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-try:
-    from ..core.storage_provider import StorageProvider, MarkdownFSProvider
-except Exception:  # pragma: no cover - fallback for direct execution
-    import sys
-
-    sys.path.insert(0, str(Path(__file__).parent.parent))
-    from core.storage_provider import (
-        StorageProvider,
-        MarkdownFSProvider,
-    )  # type: ignore
+from ..core.storage_provider import StorageProvider, MarkdownFSProvider
 
 
 @dataclass
