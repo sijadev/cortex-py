@@ -8,7 +8,7 @@ import tempfile
 import shutil
 import json
 from pathlib import Path
-from unittest.mock import patch, Mock, MagicMock
+from unittest.mock import patch, Mock
 from click.testing import CliRunner
 import sys
 import os
@@ -17,6 +17,7 @@ import os
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+# Use relative imports for cortex modules
 from cortex.cli.main import cli
 from cortex.cli.analysis import analysis
 from cortex.cli.testing import testing as test

@@ -4,7 +4,6 @@ Performance tests for Cortex CLI commands
 
 import unittest
 from pathlib import Path
-from click.testing import CliRunner
 import sys
 
 project_root = Path(__file__).parent.parent

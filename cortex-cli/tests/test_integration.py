@@ -5,7 +5,6 @@ Tests complex workflows, error conditions, and edge cases
 
 import pytest
 import tempfile
-import shutil
 from pathlib import Path
 from click.testing import CliRunner
 from unittest.mock import patch, Mock

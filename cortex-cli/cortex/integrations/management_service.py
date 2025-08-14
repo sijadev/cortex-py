@@ -58,7 +58,7 @@ class CortexManagementService:
             'ai_engine': {'status': 'running', 'pid': None},
             'cross_vault_linker': {'status': 'running', 'pid': None},
             'obsidian_bridge': {'status': 'stopped', 'pid': None},
-            'file_watcher': {'status': 'stopped', 'pid': None}
+            'neo_watcher': {'status': 'stopped', 'pid': None}
         }
         
         # Statistics

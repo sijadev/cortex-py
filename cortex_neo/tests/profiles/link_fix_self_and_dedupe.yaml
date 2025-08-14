@@ -1,0 +1,20 @@
+# Profile: Fix self-links and deduplicate multiple LINKS_TO between same pair
+initial:
+  notes: [X, Y]
+  links:
+    - { from: X, to: X }   # self-link (one instance)
+  duplicate_links:
+    - { from: X, to: Y, count: 3 }  # three parallel edges X->Y
+actions:
+  - link_fix:
+      remove_self: true
+      dedupe: true
+      backfill_shared: false
+      recompute_weight: false
+expected:
+  notes: [X, Y]
+  tags: []
+  templates: []
+  links:
+    - { from: X, to: Y }
+

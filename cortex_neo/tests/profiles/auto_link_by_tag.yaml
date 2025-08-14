@@ -1,0 +1,20 @@
+# Profile: Auto-link notes by shared tag
+initial:
+  notes: [A, B]
+  tags: [t1]
+  assignments:
+    tagged_with:
+      - { note: A, tag: t1 }
+      - { note: B, tag: t1 }
+actions:
+  - auto_link:
+      by: tag
+      min_shared: 1
+      max_per_note: 10
+expected:
+  notes: [A, B]
+  tags: [t1]
+  templates: []
+  links:
+    - { from: A, to: B }
+

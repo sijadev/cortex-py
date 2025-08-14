@@ -19,8 +19,8 @@ def run_core_tests():
     print("=" * 50)
     
     # Import test modules
-    from tests.test_cli_commands import (
-        TestMainCommands, TestAnalysisCommands, 
+    from cortex.cli.tests.test_cli_commands import (
+        TestMainCommands, TestAnalysisCommands,
         TestTestCommands, TestLinkingCommands,
         TestCommandIntegration, TestCommandValidation
     )

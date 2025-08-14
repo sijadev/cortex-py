@@ -3,8 +3,10 @@ Cortex AI Integration Module
 """
 import click
 from .chat import chat_command
-from .analyze import analyze_command  
+from .analyze import analyze_command
 from .validate import validate_command
+from .neo import neo as neo_commands
+from .research import research_command
 
 @click.group(name="ai")
 def ai():
@@ -15,6 +17,8 @@ def ai():
 ai.add_command(chat_command, name='chat')
 ai.add_command(analyze_command, name='analyze')
 ai.add_command(validate_command, name='validate')
+ai.add_command(neo_commands)
+ai.add_command(research_command)
 
 # Programmatische API exportieren
 from .chat import chat

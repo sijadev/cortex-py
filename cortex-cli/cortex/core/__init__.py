@@ -14,6 +14,7 @@ __all__ = [
     "CortexAIEngine",
     "CrossVaultLinker",
     "storage_provider",
+    "neo_watcher",
 ]
 
 
@@ -29,4 +30,6 @@ def __getattr__(name: str) -> Any:  # PEP 562 lazy imports
         )
     if name == "storage_provider":
         return importlib.import_module(".storage_provider", __name__)
+    if name == "neo_watcher":
+        return importlib.import_module(".neo_watcher", __name__)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

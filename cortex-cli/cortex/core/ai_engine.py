@@ -7,17 +7,17 @@ Professional knowledge gap detection for CLI package
 import os
 import json
 import yaml
-import time
 import logging
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime
 from dataclasses import dataclass, asdict
-from typing import Dict, List, Tuple, Optional, Set, Any
-from collections import defaultdict, Counter
+from typing import Dict, List, Optional, Any
+from collections import Counter
 import re
 import hashlib
-import asyncio
-import aiohttp
+from neo4j import GraphDatabase  # Neo4j integration
+
+from .local_ai import LocalAI
 
 @dataclass
 class KnowledgeGap:
@@ -81,6 +81,15 @@ class CortexAIEngine:
         self.config = self.load_config()
         self.gap_strategies = self.load_gap_strategies()
         
+        # Initialize the local AI module
+        self.local_ai = LocalAI()
+
+        # Neo4j driver initialization
+        neo4j_uri = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+        neo4j_user = os.environ.get("NEO4J_USER", "neo4j")
+        neo4j_password = os.environ.get("NEO4J_PASSWORD", "neo4jtest")
+        self.neo4j_driver = GraphDatabase.driver(neo4j_uri, auth=(neo4j_user, neo4j_password))
+
         # Initialize data stores
         self.detected_gaps: List[KnowledgeGap] = []
         self.research_results: Dict[str, List[ResearchResult]] = {}
@@ -397,6 +406,101 @@ class CortexAIEngine:
             "by_priority": dict(priorities),
             "last_analysis": datetime.now().isoformat()
         }
+
+    async def research_gap(self, gap_id: str) -> Optional[KnowledgeGap]:
+        """
+        Performs AI-powered research to fill a specific knowledge gap
+        by using the local AI to find related nodes in the graph.
+        """
+        gap_to_fill = next((g for g in self.detected_gaps if g.gap_id == gap_id), None)
+        if not gap_to_fill:
+            self.logger.error(f"Gap with ID '{gap_id}' not found.")
+            return None
+
+        self.logger.info(f"Researching gap with local AI: {gap_to_fill.title}")
+        gap_to_fill.last_research_attempt = datetime.now().isoformat()
+
+        # Extract a potential node name from the gap's context or title
+        # This is a simple heuristic and could be improved.
+        node_name_match = re.search(r"'\b([A-Za-z0-9_ -]+)\b'", gap_to_fill.context)
+        if not node_name_match:
+            self.logger.warning(f"Could not extract a node name from the context of gap '{gap_id}'.")
+            return gap_to_fill # Return the gap without research results
+
+        node_name = node_name_match.group(1)
+        self.logger.info(f"  - Extracted node name '{node_name}' for link suggestion.")
+
+        try:
+            # Use the local AI to get suggestions
+            suggestions = self.local_ai.suggest_links_for_node(node_name)
+
+            # Create a single research result summarizing the findings
+            content = "No suggestions found."
+            if suggestions:
+                content = "Found the following potential links:\n" + "\n".join(
+                    [f"- {s.get('potential_link')} (Score: {s.get('common_neighbors_score')})" for s in suggestions]
+                )
+
+            result = ResearchResult(
+                query=f"suggest_links_for_node('{node_name}')",
+                source_url="local_ai_graph_analysis",
+                title=f"Link suggestions for {node_name}",
+                content=content,
+                relevance_score=1.0, # Not really applicable, but we set it to 1.0
+                authority_score=1.0,
+                currency_score=1.0,
+                extracted_data={"suggestions": suggestions},
+                timestamp=datetime.now().isoformat()
+            )
+
+            if gap_id not in self.research_results:
+                self.research_results[gap_id] = []
+            self.research_results[gap_id].append(result)
+
+            self.logger.info(f"Successfully generated link suggestions for gap '{gap_id}'.")
+            self.save_detected_gaps()
+
+        except Exception as e:
+            self.logger.error(f"An error occurred during local research for gap '{gap_id}': {e}")
+            return None
+
+        return gap_to_fill
+
+    def get_potential_links_from_neo4j(self, node_name: str) -> List[dict]:
+        """Query Neo4j for potential links based on common neighbors."""
+        query = '''
+        MATCH (n:Node {name: $node_name})-[:LINKS_TO]-(neighbor)-[:LINKS_TO]-(potential)
+        WHERE NOT (n)-[:LINKS_TO]-(potential) AND n <> potential
+        RETURN potential.name AS potential_link, count(DISTINCT neighbor) AS common_neighbors_score
+        ORDER BY common_neighbors_score DESC, potential_link
+        LIMIT 10
+        '''
+        with self.neo4j_driver.session() as session:
+            results = session.run(query, node_name=node_name)
+            return [
+                {
+                    "potential_link": record["potential_link"],
+                    "common_neighbors_score": record["common_neighbors_score"]
+                }
+                for record in results
+            ]
+
+    def suggest_links(self, node_name: str) -> str:
+        """Suggest new links for a given node using Neo4j and format the output."""
+        try:
+            suggestions = self.get_potential_links_from_neo4j(node_name)
+        except Exception as e:
+            self.logger.error(f"Neo4j error while suggesting links: {e}")
+            return "[Neo4j Error: Could not connect to database]"
+        if not suggestions:
+            return "No new link suggestions found based on common neighbors."
+        lines = [f"Found {len(suggestions)} potential links for '{node_name}':"]
+        for s in suggestions:
+            link = s.get('potential_link')
+            score = s.get('common_neighbors_score')
+            lines.append(f"  - Node: {link} (Score: {score})")
+        return "\n".join(lines)
+
 
 def main():
     """CLI entry point for gap detection"""

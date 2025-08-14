@@ -1,0 +1,14 @@
+@startuml
+' Communication Workflow Sequence Diagram
+actor User
+User -> CortexCLI: run(command)
+CortexCLI -> MigrationManager: migrate()
+MigrationManager -> BackupManager: backup()
+MigrationManager -> WorkflowCreator: create_workflow()
+WorkflowCreator -> StructureValidator: validate()
+StructureValidator -> StructureValidator: visualize()
+WorkflowCreator --> CortexCLI: workflow_created
+MigrationManager --> CortexCLI: migration_complete
+CortexCLI -> User: show_result()
+@enduml
+

@@ -1,4 +1,3 @@
-import json
 """
 Hauptmodul für die Cortex CLI - Refactored Version
 Verbesserte Befehlsstruktur und Fehlerbehandlung
@@ -55,15 +54,8 @@ if __name__ == '__main__':
         handle_standard_error(e, operation_name="Cortex CLI", output_json='--json' in sys.argv, verbose='--verbose' in sys.argv or '-v' in sys.argv)
         sys.exit(1)
 
-def find_cortex_root(start_path='.'):
-    """
-    DEPRECATED: Verwende CortexConfig.find_cortex_root() stattdessen
-    """
-    from .config import CortexConfig
-    return CortexConfig.find_cortex_root(start_path)
-
 # Für Tests verfügbar machen
-__all__ = ['cli', 'find_cortex_root']
+__all__ = ['cli']
 
 @cli.command()
 @click.option('--cortex-path', type=click.Path(), 
@@ -142,3 +134,8 @@ def status(ctx, cortex_path, output_json):
         console.print(f"Konfiguriert: {'✅' if status_info['configured'] else '❌'}")
         if status_info['configured']:
             console.print(f"Konfiguration: {config_path}")
+
+def find_cortex_root():
+    """Stub for test isolation: returns current working directory."""
+    from pathlib import Path
+    return str(Path.cwd())

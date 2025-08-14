@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "cortex-py": {
+      "command": "python3",
+      "args": ["/Users/simonjanke/Projects/cortex-py/mcp_cortex_server_simple.py"],
+      "env": {
+        "PYTHONPATH": "/Users/simonjanke/Projects/cortex-py"
+      }
+    }
+  }
+}

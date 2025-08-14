@@ -22,6 +22,11 @@ __all__ = [
     "file_utils",
 ]
 
+ai_engine = None  # type: ignore
+cross_vault_linker = None  # type: ignore
+yaml_utils = None  # type: ignore
+file_utils = None  # type: ignore
+
 
 def __getattr__(name: str) -> Any:  # PEP 562 lazy imports
     if name == "ai_engine":
@@ -33,3 +38,7 @@ def __getattr__(name: str) -> Any:  # PEP 562 lazy imports
     if name == "file_utils":
         return importlib.import_module(".utils.file_utils", __name__)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return list(globals().keys()) + __all__

@@ -1,0 +1,20 @@
+# Profile: Auto-link notes by shared template
+initial:
+  notes: [T1, T2]
+  templates: [Tpl]
+  assignments:
+    uses_template:
+      - { note: T1, template: Tpl }
+      - { note: T2, template: Tpl }
+actions:
+  - auto_link:
+      by: template
+      min_shared: 1
+      max_per_note: 10
+expected:
+  notes: [T1, T2]
+  tags: []
+  templates: [Tpl]
+  links:
+    - { from: T1, to: T2, auto: true, templates_shared: 1, weight: 1 }
+

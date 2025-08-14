@@ -62,28 +62,18 @@ class CortexTestRunner(CliRunner):
         """Invoke CLI command with proper test environment"""
         if workspace is None:
             workspace = self.test_workspace or self.setup_test_workspace()
-        
-        # Change to test workspace directory before invoking command
         original_cwd = os.getcwd()
         try:
             os.chdir(workspace)
-            
-            # Ensure cortex-path is set to current directory if not provided
             if isinstance(command, str):
                 command = command.split()
-            
-            # Add --cortex-path if not already present
             if '--cortex-path' not in command:
                 command.extend(['--cortex-path', '.'])
-        
+            # Actually invoke the CLI command and return the result
+            return self.invoke(cli, command, *args, **kwargs)
         finally:
             os.chdir(original_cwd)
-        
-        if isinstance(command, str):
-            command = command.split()
-            
-        return self.invoke(cli, command, *args, **kwargs)
-    
+
     def invoke_with_workspace(self, cli, args, workspace=None, **kwargs):
         """Invoke CLI command with workspace context"""
         import sys

@@ -1,0 +1,53 @@
+@startuml
+' Main Class Design Diagram
+class CortexCLI {
+  +run()
+  +parse_command()
+}
+class AIEngine {
+  +generate_tags()
+  +analyze_content()
+}
+class FileWatcher {
+  +watch()
+  +on_change()
+}
+class ResearchCore {
+  +run_research()
+}
+class MigrationManager {
+  +migrate()
+  +extract_obsidian_structure()
+}
+class BackupManager {
+  +backup()
+  +restore()
+}
+class WorkflowCreator {
+  +create_workflow()
+}
+class StructureValidator {
+  +validate()
+  +visualize()
+}
+class ExternalAI {
+  +call_model()
+}
+class Helpers {
+  +utility_methods()
+}
+
+CortexCLI --> AIEngine
+CortexCLI --> FileWatcher
+CortexCLI --> ResearchCore
+CortexCLI --> MigrationManager
+CortexCLI --> WorkflowCreator
+CortexCLI --> StructureValidator
+AIEngine --> ExternalAI
+MigrationManager --> BackupManager
+MigrationManager --> WorkflowCreator
+WorkflowCreator --> StructureValidator
+AIEngine ..> Helpers
+MigrationManager ..> Helpers
+@enduml
+

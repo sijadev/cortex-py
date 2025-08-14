@@ -4,13 +4,16 @@ Test suite for MCP Bridge - Critical Risk Mitigation
 Tests for cortex/integrations/mcp_bridge.py (currently 0% coverage)
 """
 
+import sys
+from pathlib import Path
+# Add project root to path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
 import pytest
 import json
-import asyncio
-import tempfile
-from pathlib import Path
 from datetime import datetime
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
+from unittest.mock import patch, AsyncMock
 
 # Import the critical MCP Bridge components
 try:
@@ -22,6 +25,11 @@ try:
     )
     MCP_BRIDGE_AVAILABLE = True
 except ImportError:
+    # Define dummy classes to allow test skipping
+    class ObsidianNote: pass
+    class MCPCommand: pass
+    class SyncResult: pass
+    class MCPBridge: pass
     MCP_BRIDGE_AVAILABLE = False
 
 
