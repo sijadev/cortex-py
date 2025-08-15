@@ -1,0 +1,80 @@
+name: Quick Tests
+
+on:
+  push:
+    branches-ignore: [ main ]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  quick-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.12
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+
+    - name: Set up test environment
+      run: |
+        mkdir -p logs/tests tests/reports
+        export PYTHONPATH="${PYTHONPATH}:$(pwd):$(pwd)/src"
+        export NEO4J_DISABLED=1
+        echo "PYTHONPATH=${PYTHONPATH}:$(pwd):$(pwd)/src" >> $GITHUB_ENV
+        echo "NEO4J_DISABLED=1" >> $GITHUB_ENV
+
+    - name: Run fast test subset
+      run: |
+        # Nur die wichtigsten Tests für schnelles Feedback
+        python -m pytest tests/unit/ -x --tb=short -q
+
+    - name: Basic MCP validation
+      run: |
+        python -c "
+        import sys
+        sys.path.insert(0, 'src')
+        try:
+            from mcp.mcp_server import create_server
+            print('✅ MCP Server import successful')
+        except ImportError as e:
+            print(f'⚠️  MCP Server import failed: {e}')
+            sys.exit(1)
+        "
+
+  lint-check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.12
+
+    - name: Install linting tools
+      run: |
+        pip install flake8 black isort
+
+    - name: Quick lint check
+      run: |
+        # Nur kritische Linting-Fehler prüfen
+        flake8 src/ --select=E9,F63,F7,F82 --show-source --statistics
+        echo "✅ Critical lint check passed"

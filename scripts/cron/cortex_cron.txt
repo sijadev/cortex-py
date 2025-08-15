@@ -1,0 +1,11 @@
+# Cortex Datenintegrität Cron-Jobs
+# Hinzufügen mit: crontab -e
+
+# Tägliches Backup um 2:00 Uhr
+0 2 * * * /Users/simonjanke/Projects/cortex-py/backup_cortex.sh >> /Users/simonjanke/Projects/cortex-py/logs/backup.log 2>&1
+
+# Stündliche Integritätsprüfung (während Arbeitszeiten)
+0 9-18 * * 1-5 /usr/bin/python3 /Users/simonjanke/Projects/cortex-py/check_integrity.py >> /Users/simonjanke/Projects/cortex-py/logs/integrity.log 2>&1
+
+# Wöchentliche umfassende Validierung (Sonntags um 3:00)
+0 3 * * 0 /Users/simonjanke/Projects/cortex-py/weekly_deep_check.sh >> /Users/simonjanke/Projects/cortex-py/logs/weekly.log 2>&1

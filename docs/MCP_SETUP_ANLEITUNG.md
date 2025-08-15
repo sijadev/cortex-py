@@ -1,6 +1,8 @@
 # Cortex MCP Server Setup für Claude Desktop
 
-## 1. MCP-Bibliothek installieren
+## Installation
+
+### 1. MCP-Bibliothek installieren
 
 Öffnen Sie ein Terminal und führen Sie folgende Befehle aus:
 
@@ -11,7 +13,7 @@ conda activate base
 pip install mcp
 ```
 
-## 2. MCP Server testen
+### 2. MCP Server testen
 
 Testen Sie den MCP Server:
 

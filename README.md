@@ -1,66 +1,74 @@
-# Cortex-py: AI-Enhanced Knowledge Management System
+# AI-Chatbot-Entwicklung
 
-Ein intelligentes Knowledge Management System mit Neo4j Backend und Claude Desktop Integration über MCP (Model Context Protocol).
+**Projekttyp:** research
+**Erstellt:** 2025-08-15
+**Status:** 🟢 Aktiv
 
-## Features
+## 📋 Übersicht
 
-🧠 **AI-basierte Tag-Vorschläge**: Machine Learning-basierte automatische Tag-Generierung
-🔗 **Content-basierte Verlinkung**: Automatische Verknüpfung ähnlicher Notes
-📝 **Vollständiges Content-Management**: Notes mit Rich Text Content
-🌐 **Claude Desktop Integration**: Nahtlose MCP Server Integration
-📊 **Neo4j Knowledge Graph**: Strukturierte Wissensspeicherung
+[Projektbeschreibung hier einfügen]
 
-## Quick Start
+## 🎯 Ziele
 
-1. **Installation:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+- [ ] Ziel 1
+- [ ] Ziel 2
+- [ ] Ziel 3
 
-2. **Neo4j Setup:**
-   - Starte Neo4j Database (localhost:7687)
-   - Standard Credentials: neo4j/neo4jtest
+## 📁 Projektstruktur
 
-3. **MCP Server für Claude Desktop:**
-   ```bash
-   make claude-restart
-   ```
+- `docs/` - Projektdokumentation
+- `notes/` - Arbeitsnoten und Ideen
+- `meeting-notes/` - Meeting-Protokolle
+- `status-reports/` - Status-Reports
+- `deliverables/` - Projektergebnisse
 
-## Verfügbare Befehle
+## 🔗 MCP Integration (Model Context Protocol)
 
-### Content Management
-- `python3 cortex_neo/cortex_cli.py add-note "Note Name" --content "Content..." --type "project"`
-- `python3 cortex_neo/cortex_cli.py show-note "Note Name"`
-- `python3 cortex_neo/cortex_cli.py search-notes "query" --in-content`
+Dieses Projekt bietet vollständige **MCP (Model Context Protocol)** Integration für Claude Desktop:
 
-### AI-Features
-- `python3 cortex_neo/cortex_cli.py ai-suggest-tags` - AI-basierte Tag-Vorschläge
-- `python3 cortex_neo/cortex_cli.py auto-link-by-content` - Automatische Content-Verlinkung
-- `python3 cortex_neo/cortex_cli.py suggest-links "Note Name"` - Link-Vorschläge für spezifische Note
+### MCP Server Features
+- **Cortex MCP Server**: Direkter Zugriff auf Cortex CLI Funktionen
+- **Knowledge Graph Integration**: Durchsuche und verwalte den Neo4j Knowledge Graph
+- **Intelligent Templates**: Automatische Template-Erkennung und -Validierung
+- **Real-time Status**: Live-Status des Cortex-Systems
 
-### Claude Desktop Integration
-Die folgenden Tools sind direkt in Claude Desktop verfügbar:
-- `cortex_add_note` - Erstelle Notes mit Content
-- `cortex_ai_suggest_tags` - AI-basierte Tag-Vorschläge
-- `cortex_auto_link_content` - Automatische Verlinkung
-- `cortex_search_content` - Erweiterte Suche
+### Quick Start mit MCP
+```bash
+# MCP Server starten
+./start_mcp_cortex_server.sh
 
-## Makefile Commands
+# Claude Desktop konfigurieren
+# Siehe: docs/MCP_SETUP_ANLEITUNG.md
+```
 
-- `make help` - Zeige verfügbare Befehle
-- `make test` - Teste MCP Server
-- `make status` - Zeige System-Status
-- `make claude-restart` - Starte Claude Desktop neu
+### Verfügbare MCP Tools
+- `cortex_run_command`: Führe beliebige Cortex CLI Befehle aus
+- `cortex_add_knowledge`: Füge neues Wissen zum Knowledge Graph hinzu  
+- `cortex_search`: Durchsuche den Knowledge Graph nach Inhalten
 
-## Projektstruktur
+### MCP Ressourcen
+- `cortex://status`: Aktueller System-Status
+- `cortex://knowledge-graph`: Knowledge Graph Übersicht
 
-- `cortex_neo/cortex_cli.py` - Hauptkommandozeilen-Interface
-- `mcp_cortex_server_simple.py` - MCP Server für Claude Desktop
-- `claude_desktop_config.json` - Claude Desktop Konfiguration
-- `assets/` - PlantUML Diagramme und Dokumentation
+**Dokumentation:** Siehe `docs/MCP_SETUP_ANLEITUNG.md` für detaillierte Setup-Anweisungen.
 
-## System Requirements
+## 🛡️ Data Governance
 
-- Python 3.8+
-- Neo4j Database
-- Claude Desktop (für MCP Integration)
+Dieses Projekt nutzt Data Governance Templates:
+- Projekt Kickoff: `project_kickoff_AI-Chatbot-Entwicklung`
+- Status Reports: `status_report_AI-Chatbot-Entwicklung`
+
+### Validierung
+```bash
+# Template validieren
+governance-cli templates validate project_kickoff_AI-Chatbot-Entwicklung document.md
+
+# Workflow-Status prüfen
+governance-cli workflows progress project_lifecycle
+```
+
+## 📊 Workflow
+
+```
+Initiation → Planning → Execution → Monitoring → Closure
+```

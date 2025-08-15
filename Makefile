@@ -27,12 +27,12 @@ install:
 
 test:
 	@echo "🧪 Teste MCP Server..."
-	python3 -m py_compile mcp_cortex_server_simple.py
+	python3 -m py_compile src/mcp/cortex_mcp_server.py
 	@echo "✅ MCP Server Syntax ist korrekt"
 
 status:
 	@echo "📊 Cortex-py System Status:"
-	@echo "📁 MCP Server: mcp_cortex_server_simple.py"
+	@echo "📁 MCP Server: src/mcp/cortex_mcp_server.py"
 	@if [ -f ~/Library/Application\ Support/Claude/claude_desktop_config.json ]; then \
 		echo "✅ Claude Desktop Konfiguration gefunden"; \
 	else \

@@ -1,0 +1,272 @@
+nodes:
+- id: 0
+  labels:
+  - Note
+  properties:
+    content: "Hier ist ein einfaches Python-Programm-Beispiel:\n\n```python\n# Einfacher\
+      \ Taschenrechner\ndef calculator():\n    print('Einfacher Taschenrechner')\n\
+      \    \n    while True:\n        try:\n            num1 = float(input('Erste\
+      \ Zahl: '))\n            operator = input('Operator (+, -, *, /): ')\n     \
+      \       num2 = float(input('Zweite Zahl: '))\n            \n            if operator\
+      \ == '+':\n                result = num1 + num2\n            elif operator ==\
+      \ '-':\n                result = num1 - num2\n            elif operator == '*':\n\
+      \                result = num1 * num2\n            elif operator == '/':\n \
+      \               if num2 != 0:\n                    result = num1 / num2\n  \
+      \              else:\n                    print('Fehler: Division durch Null!')\n\
+      \                    continue\n            else:\n                print('Ungültiger\
+      \ Operator!')\n                continue\n                \n            print(f'Ergebnis:\
+      \ {result}')\n            \n            if input('Weitere Berechnung? (j/n):\
+      \ ').lower() != 'j':\n                break\n                \n        except\
+      \ ValueError:\n            print('Fehler: Bitte gültige Zahlen eingeben!')\n\
+      \        except Exception as e:\n            print(f'Unerwarteter Fehler: {e}')\n\
+      \nif __name__ == '__main__':\n    calculator()\n```\n\nDieses Beispiel zeigt\
+      \ grundlegende Python-Konzepte wie Funktionen, Schleifen, Exception-Handling\
+      \ und Benutzereingaben."
+    description: Einfaches Python-Taschenrechner-Programm mit Grundfunktionen
+    name: Python Taschenrechner Beispiel
+    type: code-example
+    updated_at: 1755208219552
+    url: ''
+- id: 1
+  labels:
+  - Tag
+  properties:
+    name: python
+- id: 2
+  labels:
+  - Tag
+  properties:
+    name: geschichte
+- id: 4
+  labels:
+  - Tag
+  properties:
+    name: framework
+- id: 9
+  labels:
+  - Workflow
+  properties:
+    name: Python Knowledge Base
+    status: in progress
+    type: Standard
+- id: 12
+  labels:
+  - Step
+  properties:
+    name: Grundlagen
+    order: 1
+- id: 13
+  labels:
+  - Step
+  properties:
+    name: Frameworks
+    order: 2
+- id: 14
+  labels:
+  - Step
+  properties:
+    name: Testing & Automation
+    order: 3
+- id: 15
+  labels:
+  - Step
+  properties:
+    name: Machine Learning
+    order: 4
+- id: 18
+  labels:
+  - Template
+  properties:
+    name: Python Framework
+- id: 26
+  labels:
+  - Workflow
+  properties:
+    name: TestWorkflow
+    status: in progress
+    type: Standard
+- id: 29
+  labels:
+  - Tag
+  properties:
+    name: code
+- id: 33
+  labels:
+  - Tag
+  properties:
+    name: testing
+- id: 57
+  labels:
+  - Note
+  properties:
+    content: 'Die Geschichte von Python ist eine Erfolgsgeschichte der modernen Programmierung.
+      Was 1989 als Hobby-Projekt begann, ist heute eine der wichtigsten Programmiersprachen
+      der Welt:
+
+
+      **Entstehung (1989-1991):**
+
+      Guido van Rossum begann Python im Dezember 1989 am CWI in Amsterdam als Nachfolger
+      der ABC-Sprache. Der Name stammt von ''Monty Python''s Flying Circus''. Die
+      erste Version 0.9.0 wurde im Februar 1991 veröffentlicht.
+
+
+      **Frühe Entwicklung (1991-2000):**
+
+      - 1994: Python 1.0 - erste stabile Version
+
+      - 2000: Python 2.0 - Unicode-Unterstützung, Garbage Collection
+
+
+      **Moderne Ära (2008-heute):**
+
+      - 2008: Python 3.0 - große Überarbeitung, nicht rückwärtskompatibel
+
+      - 2020: Python 2 End-of-Life
+
+      - 2025: Python dominiert AI, Data Science und Web-Development'
+    description: Überblick über die komplette Entwicklungsgeschichte von Python
+    name: Python Geschichte
+    type: overview
+    updated_at: 1755208180731
+    url: ''
+- id: 58
+  labels:
+  - Note
+  properties:
+    content: "Guido van Rossum (* 31. Januar 1956) ist ein niederländischer Informatiker\
+      \ und der Schöpfer von Python. Er wird oft als 'Benevolent Dictator for Life'\
+      \ (BDFL) bezeichnet.\n\n**Karriere:**\n- CWI Amsterdam (1986-1999): Entwicklung\
+      \ von Python\n- Google (2005-2012): Arbeit an Python-Integration\n- Dropbox\
+      \ (2013-2019): Python-Infrastructure  \n- Microsoft (2019-2021): Python Steering\
+      \ Council\n- Ruhestand (2021-heute): Noch aktiv in der Python-Community\n\n\
+      **Errungenschaften:**\n- Erfinder von Python (1989)\n- BDFL von Python (1991-2018)\n\
+      - Advocate für sauberen, lesbaren Code\n- Einfluss auf moderne Programmiersprachen"
+    description: Biografie des Python-Erfinders
+    name: Guido van Rossum
+    type: person
+    updated_at: 1755208188941
+    url: ''
+- id: 59
+  labels:
+  - Note
+  properties:
+    content: "Django ist ein high-level Python Web-Framework, das schnelle Entwicklung\
+      \ und sauberes, pragmatisches Design fördert. Es folgt dem \"batteries-included\"\
+      \ Prinzip.\n\n**Hauptmerkmale 2025:**\n- Eingebaute Admin-Oberfläche für Datenverwaltung\n\
+      - Robuste ORM (Object-Relational Mapping) für Datenbankinteraktionen  \n- Standardmäßig\
+      \ sicher (Schutz vor SQL Injection, Cross-Site Scripting)\n- Unterstützt RESTful\
+      \ APIs und einfache Integration mit anderen APIs\n- Model-View-Template (MVT)\
+      \ Architektur\n\n**Verwendung:**\nWird von großen Unternehmen wie Instagram,\
+      \ Pinterest und Spotify eingesetzt. Über 8 Millionen Downloads pro Monat.\n\n\
+      **2025 Status:** \nLaut Umfragen das 4. meist gewünschte Framework für Web-Entwicklung."
+    description: Das beliebteste Python Web-Framework für 2025
+    name: Django Framework
+    type: framework
+    updated_at: 1755208198518
+    url: ''
+- id: 60
+  labels:
+  - Note
+  properties:
+    content: 'PyTest ist das führende Python Testing-Framework für 2025 und eine mächtige
+      Alternative zum eingebauten unittest.
+
+
+      **Hauptvorteile:**
+
+      - Einfache, lesbare Syntax ohne komplizierte Klassen-Strukturen
+
+      - 800+ externe Plugins verfügbar
+
+      - Eingebaute Test-Discovery ohne Namenskonventionen
+
+      - Fixtures für Setup/Teardown
+
+      - Parametrisierte Tests für Datenvariation
+
+      - Parallel-Execution möglich
+
+      - Detaillierte Fehlerberichte
+
+
+      **2025 Features:**
+
+      - Kompatibel mit Python 3.7+ und PyPy3
+
+      - Integration mit CI/CD-Pipelines (Jenkins, GitHub Actions)
+
+      - Support für Browser-Testing mit Selenium
+
+      - BDD-Unterstützung mit pytest-bdd
+
+      - Allure-Reports für detaillierte Dokumentation
+
+
+      **Best Practices:**
+
+      - Verwende Fixtures für wiederverwendbare Test-Setups
+
+      - Implementiere Page Object Model (POM) für UI-Tests
+
+      - Nutze Explicit Waits für stabile Browser-Tests'
+    description: Das führende Python Testing-Framework für 2025
+    name: PyTest Framework
+    type: framework
+    updated_at: 1755208208331
+    url: ''
+operation: pre-add_note_governance
+relationships:
+- end_id: 29
+  properties: {}
+  start_id: 0
+  type: TAGGED_WITH
+- end_id: 1
+  properties: {}
+  start_id: 0
+  type: TAGGED_WITH
+- end_id: null
+  properties: null
+  start_id: null
+  type: null
+- end_id: 15
+  properties: {}
+  start_id: 9
+  type: HAS_STEP
+- end_id: 14
+  properties: {}
+  start_id: 9
+  type: HAS_STEP
+- end_id: 13
+  properties: {}
+  start_id: 9
+  type: HAS_STEP
+- end_id: 12
+  properties: {}
+  start_id: 9
+  type: HAS_STEP
+- end_id: 2
+  properties: {}
+  start_id: 57
+  type: TAGGED_WITH
+- end_id: 1
+  properties: {}
+  start_id: 57
+  type: TAGGED_WITH
+- end_id: 1
+  properties: {}
+  start_id: 58
+  type: TAGGED_WITH
+- end_id: 18
+  properties: {}
+  start_id: 59
+  type: USES_TEMPLATE
+- end_id: 33
+  properties: {}
+  start_id: 60
+  type: TAGGED_WITH
+- end_id: 18
+  properties: {}
+  start_id: 60
+  type: USES_TEMPLATE
+timestamp: '20250815_003148'

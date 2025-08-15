@@ -5,11 +5,23 @@ set -e
 
 REPORT_FILE="report.html"
 
+# Set Neo4j environment variables for tests
+export NEO4J_URI="bolt://localhost:7687"
+export NEO4J_USER="neo4j"
+export NEO4J_PASSWORD="neo4jtest"
+
+echo "🔧 Neo4j Configuration:"
+echo "   URI: $NEO4J_URI"
+echo "   User: $NEO4J_USER"
+echo "   Password: [CONFIGURED]"
+echo ""
+
 if [ "$1" == "neo4j" ]; then
     echo "Starte nur Neo4J-Tests (cortex_neo/tests/test_profiles.py)..."
     pytest cortex_neo/tests/test_profiles.py --maxfail=5 --disable-warnings --tb=short --html=$REPORT_FILE || true
 else
     # Tests ausführen und HTML-Report generieren
+    echo "🧪 Running all tests with Neo4j support..."
     pytest --maxfail=5 --disable-warnings --tb=short --html=$REPORT_FILE || true
 fi
 

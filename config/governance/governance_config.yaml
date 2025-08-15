@@ -1,0 +1,61 @@
+templates:
+  Programmiersprache-Geschichte:
+    content_standards:
+      min_length: 200
+      optional_keywords:
+      - geschichte
+      - python
+      required_keywords:
+      - entwicklung
+    required_sections:
+    - Entstehung
+    - Entwicklung
+    suggested_tags:
+    - geschichte
+    - python
+    workflow_step: Grundlagen
+  Python Framework:
+    content_standards:
+      min_length: 150
+      optional_keywords:
+      - framework
+      - web
+      required_keywords:
+      - python
+    required_sections:
+    - Hauptmerkmale
+    - Verwendung
+    - Status
+    suggested_tags:
+    - framework
+    - python
+    workflow_step: Frameworks
+validation_rules:
+  auto_suggest_tags: true
+  auto_suggest_templates: true
+  auto_suggest_workflow_steps: true
+  content_min_length: 20
+  description_min_length: 10
+  duplicate_threshold: 0.7
+  name_min_length: 3
+workflows:
+  API Development:
+    auto_assign: true
+    steps:
+    - Design
+    - Implementation
+    - Testing
+    - Documentation
+    templates:
+    - REST API Guide
+    - Python Framework
+  Python Knowledge Base:
+    auto_assign: true
+    steps:
+    - Grundlagen
+    - Frameworks
+    - Testing & Automation
+    - Machine Learning
+    templates:
+    - Python Framework
+    - Programmiersprache-Geschichte

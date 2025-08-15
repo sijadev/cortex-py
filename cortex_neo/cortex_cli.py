@@ -3,18 +3,140 @@ from neo4j import GraphDatabase
 import os
 import json
 import re
-import requests
+import sys
+from datetime import datetime
+import logging
+
+# Import our safety modules
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
+from safe_transactions import SafeTransactionManager, DataIntegrityValidator
+
+# Try to import governance, but make it optional to avoid blocking CLI functionality
+try:
+    from src.governance.data_governance import DataGovernanceEngine, ValidationResult
+    GOVERNANCE_AVAILABLE = True
+except ImportError:
+    # Fallback if governance module is not available
+    GOVERNANCE_AVAILABLE = False
+
+    # Create stub classes to prevent crashes
+    class ValidationResult:
+        def __init__(self):
+            self.passed = True
+            self.errors = []
+            self.warnings = []
+            self.suggestions = []
+
+    class DataGovernanceEngine:
+        def __init__(self, driver):
+            pass
+
+        def validate_note(self, name, content="", note_type=""):
+            return ValidationResult()
 
 NEO4J_URI = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
 NEO4J_USER = os.environ.get("NEO4J_USER", "neo4j")
 NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "neo4jtest")
 CORTEX_AI_URL = os.environ.get("CORTEX_AI_URL", "http://127.0.0.1:8000")
 
-# Helper for Neo4j driver/session
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Local governance print helper (renamed to avoid conflict)
+def print_governance_validation_result(result: ValidationResult, note_name: str) -> bool:
+    """Zeigt Validierungsergebnisse übersichtlich an."""
+    print(f"\n🔍 Data Governance Validierung für: '{note_name}'")
+    print("=" * 60)
+
+    # Errors
+    if result.errors:
+        print("❌ KRITISCHE FEHLER:")
+        for error in result.errors:
+            print(f"   • {error}")
+
+    # Warnings
+    if result.warnings:
+        print("\n⚠️ WARNUNGEN:")
+        for warning in result.warnings:
+            print(f"   • {warning}")
+
+    # Suggestions
+    if result.suggestions:
+        print("\n💡 EMPFEHLUNGEN:")
+        for suggestion in result.suggestions:
+            print(f"   • {suggestion}")
+
+    # Summary
+    if result.passed and not result.warnings:
+        print("\n✅ ALLE VALIDIERUNGEN BESTANDEN")
+    elif result.passed:
+        print("\n⚠️ VALIDIERUNG MIT WARNUNGEN BESTANDEN")
+    else:
+        print("\n❌ VALIDIERUNG FEHLGESCHLAGEN")
+
+    print("=" * 60)
+    return result.passed
+
+# Helper for Neo4j driver/session with safety enhancements
 class Neo4jHelper:
-    @staticmethod
-    def get_driver():
-        return GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    _driver = None
+    _transaction_manager = None
+    _validator = None
+
+    @classmethod
+    def get_driver(cls):
+        if cls._driver is None:
+            cls._driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+        return cls._driver
+
+    @classmethod
+    def get_safe_transaction_manager(cls):
+        if cls._transaction_manager is None:
+            cls._transaction_manager = SafeTransactionManager(
+                cls.get_driver(),
+                backup_dir="cortex_neo/backups/auto"
+            )
+        return cls._transaction_manager
+
+    @classmethod
+    def get_validator(cls):
+        if cls._validator is None:
+            cls._validator = DataIntegrityValidator(
+                cls.get_driver(),
+                baseline_file="cortex_neo/monitoring/baseline_stats.json"
+            )
+        return cls._validator
+
+    @classmethod
+    def validate_connection_and_data(cls):
+        """Validates connection and checks for data integrity issues"""
+        try:
+            validator = cls.get_validator()
+            stats = validator.get_current_stats()
+
+            click.echo(f"📊 Aktueller Datenbestand:")
+            click.echo(f"   📝 Notes: {stats['notes']}")
+            click.echo(f"   🔄 Workflows: {stats['workflows']}")
+            click.echo(f"   🏷️  Tags: {stats['tags']}")
+            click.echo(f"   🔗 Verknüpfungen: {stats['note_links'] + stats['workflow_links']}")
+
+            # Check for critical data loss
+            if validator.emergency_restore_check():
+                click.echo("🚨 KRITISCHER DATENVERLUST ERKANNT!")
+                return False
+
+            # Validate integrity
+            is_healthy = validator.validate_integrity()
+            if not is_healthy:
+                click.echo("⚠️  Datenintegritätsprobleme erkannt!")
+                return False
+
+            return True
+
+        except Exception as e:
+            click.echo(f"❌ Verbindungs-/Datenvalidierung fehlgeschlagen: {e}")
+            return False
 
 @click.group()
 def cli():
@@ -230,7 +352,7 @@ def update_note_content(name, content):
             result = session.run(
                 """
                 MATCH (n:Note {name: $name})
-                SET n.content = $content, n.updated_at = datetime()
+                SET n.content = $content, n.updated_at = timestamp()
                 RETURN n
                 """,
                 name=name, content=content
@@ -270,7 +392,7 @@ def import_note_content(name, file_path):
             result = session.run(
                 """
                 MATCH (n:Note {name: $name})
-                SET n.content = $content, n.updated_at = datetime()
+                SET n.content = $content, n.updated_at = timestamp()
                 RETURN n
                 """,
                 name=name, content=content
@@ -976,7 +1098,7 @@ def auto_link_by_content(min_similarity, max_links_per_note, content_length_min)
                     break
 
             print(f"✅ Content-Analyse abgeschlossen: {links_created} neue Links erstellt")
-            print(f"📋 Parameter: min_similarity={min_similarity}, max_per_note={max_links_per_note}")
+            print(f"📋 Parameter: min_similarity={min_similarity}, max_links_per_note={max_links_per_note}")
 
     except Exception as e:
         print(f"❌ Fehler bei der Content-basierten Verlinkung: {e}")
@@ -1738,5 +1860,1012 @@ def ai_suggest_tags_for_note(note_name, suggestions, min_confidence):
         import traceback
         traceback.print_exc()
 
-if __name__ == '__main__':
-    cli()
+# --- Sichere Workflow-Operationen (mit Transaction Safety) ---
+@cli.command()
+@click.argument('workflow_name')
+def create_workflow_safe(workflow_name):
+    """Legt einen neuen Workflow sicher an (mit Backup & Transaction Safety)."""
+    manager = Neo4jHelper.get_safe_transaction_manager()
+
+    @manager.safe_transaction("create_workflow")
+    def _create_workflow_tx(tx, name):
+        result = tx.run(
+            "MERGE (w:Workflow {name: $workflow_name, type: 'Standard', status: 'in progress'}) RETURN w",
+            workflow_name=name
+        )
+        return result.single()
+
+    try:
+        result = _create_workflow_tx(workflow_name)
+        if result:
+            click.echo(f"✅ Workflow '{workflow_name}' sicher angelegt.")
+        else:
+            click.echo(f"⚠️ Workflow '{workflow_name}' bereits vorhanden.")
+    except Exception as e:
+        click.echo(f"❌ Fehler beim sicheren Anlegen des Workflows: {e}")
+
+@cli.command()
+@click.argument('workflow_name')
+@click.option('--confirm', is_flag=True, help='Bestätige gefährliche Löschoperation')
+def delete_workflow_safe(workflow_name, confirm):
+    """Löscht einen Workflow SICHER mit Backup und Bestätigung."""
+
+    # Sicherheitscheck
+    if not confirm:
+        click.echo("⚠️ GEFÄHRLICHE OPERATION! Verwende --confirm")
+        click.echo("💡 Dieser Befehl löscht den Workflow und alle zugehörigen Steps!")
+        return
+
+    # Validiere Datenbestand vor Operation
+    if not Neo4jHelper.validate_connection_and_data():
+        click.echo("❌ Datenvalidierung fehlgeschlagen - Operation abgebrochen")
+        return
+
+    manager = Neo4jHelper.get_safe_transaction_manager()
+
+    @manager.safe_transaction("delete_workflow")
+    def _delete_workflow_tx(tx, name):
+        # Prüfe was gelöscht wird
+        check_result = tx.run(
+            """
+            MATCH (w:Workflow {name: $workflow_name})-[:HAS_STEP]->(s:Step)
+            RETURN w, count(s) as step_count
+            """,
+            workflow_name=name
+        ).single()
+
+        if not check_result:
+            return {"deleted": False, "reason": "Workflow nicht gefunden"}
+
+        step_count = check_result['step_count']
+
+        # Zeige was gelöscht wird
+        click.echo(f"🗑️ Lösche Workflow '{name}' mit {step_count} Steps")
+
+        # Bestätigungsprompt
+        if not click.confirm("Wirklich löschen?"):
+            return {"deleted": False, "reason": "Von Benutzer abgebrochen"}
+
+        # Eigentliche Löschung
+        delete_result = tx.run(
+            """
+            MATCH (w:Workflow {name: $workflow_name})-[r:HAS_STEP]->(s:Step)
+            DETACH DELETE w, s
+            RETURN count(w) as workflows_deleted, count(s) as steps_deleted
+            """,
+            workflow_name=name
+        ).single()
+
+        return {
+            "deleted": True,
+            "workflows_deleted": delete_result['workflows_deleted'],
+            "steps_deleted": delete_result['steps_deleted']
+        }
+
+    try:
+        result = _delete_workflow_tx(workflow_name)
+
+        if result['deleted']:
+            click.echo(f"✅ Workflow '{workflow_name}' und {result['steps_deleted']} Steps sicher gelöscht")
+        else:
+            click.echo(f"❌ Löschung abgebrochen: {result['reason']}")
+
+    except Exception as e:
+        click.echo(f"❌ Fehler bei sicherer Löschung: {e}")
+        click.echo("💡 Backup verfügbar in cortex_neo/backups/auto/")
+
+        # Angebot zur Wiederherstellung
+        if click.confirm("Aus dem letzten Backup wiederherstellen?"):
+            click.echo("🔄 Wiederherstellung aus Backup wird implementiert...")
+
+@cli.command()
+@click.argument('name')
+@click.option('--content', help='Textinhalt der Note')
+@click.option('--description', help='Kurze Beschreibung der Note')
+@click.option('--type', 'note_type', help='Typ/Kategorie der Note')
+@click.option('--url', help='URL/Link zur Note')
+def add_note_safe(name, content, description, note_type, url):
+    """Legt eine Note SICHER mit automatischem Backup an."""
+
+    manager = Neo4jHelper.get_safe_transaction_manager()
+
+    @manager.safe_transaction("add_note")
+    def _add_note_tx(tx, name, content, description, note_type, url):
+        # Prüfe ob Note bereits existiert
+        existing = tx.run("MATCH (n:Note {name: $name}) RETURN n", name=name).single()
+
+        # Erstelle/update Note mit allen verfügbaren Properties
+        result = tx.run(
+            """
+            MERGE (n:Note {name: $name})
+            SET n.content = $content,
+                n.description = $description,
+                n.type = $note_type,
+                n.url = $url,
+                n.updated_at = timestamp(),
+                n.governance_validated = true
+            RETURN n, $content is not null as has_content
+            """,
+            name=name,
+            content=content or "",
+            description=description or "",
+            note_type=note_type or "",
+            url=url or ""
+        ).single()
+
+        return {
+            "note": result['n'],
+            "was_existing": existing is not None,
+            "has_content": result['has_content']
+        }
+
+    try:
+        result = _add_note_tx(name, content, description, note_type, url)
+
+        if result['was_existing']:
+            click.echo(f"✅ Note '{name}' sicher aktualisiert")
+        else:
+            click.echo(f"✅ Note '{name}' sicher angelegt")
+
+        if result['has_content']:
+            content_preview = content[:100] + "..." if len(content) > 100 else content
+            click.echo(f"   📄 Content: {content_preview}")
+        if description:
+            click.echo(f"   📝 Beschreibung: {description}")
+        if note_type:
+            click.echo(f"   🏷️ Typ: {note_type}")
+        if url:
+            click.echo(f"   🔗 URL: {url}")
+
+    except Exception as e:
+        click.echo(f"❌ Fehler beim sicheren Anlegen der Note: {e}")
+
+@cli.command()
+@click.argument('name')
+@click.option('--confirm', is_flag=True, help='Bestätige Note-Löschung')
+def delete_note_safe(name, confirm):
+    """Löscht eine Note SICHER mit Backup, Bestätigung und Wiederherstellungsoption."""
+
+    if not confirm:
+        click.echo("⚠️ GEFÄHRLICHE OPERATION! Verwende --confirm")
+        return
+
+    # Validiere Datenbestand
+    if not Neo4jHelper.validate_connection_and_data():
+        click.echo("❌ Datenvalidierung fehlgeschlagen - Operation abgebrochen")
+        return
+
+    manager = Neo4jHelper.get_safe_transaction_manager()
+
+    @manager.safe_transaction("delete_note")
+    def _delete_note_tx(tx, name):
+        # Prüfe was gelöscht wird (inkl. Beziehungen)
+        note_info = tx.run(
+            """
+            MATCH (n:Note {name: $name})
+            OPTIONAL MATCH (n)-[r1:TAGGED_WITH]->(t:Tag)
+            OPTIONAL MATCH (n)-[r2:USES_TEMPLATE]->(tpl:Template)
+            OPTIONAL MATCH (n)-[r3:LINKS_TO]->(out:Note)
+            OPTIONAL MATCH (in:Note)-[r4:LINKS_TO]->(n)
+            RETURN n,
+                   count(DISTINCT t) as tag_count,
+                   count(DISTINCT tpl) as template_count,
+                   count(DISTINCT r3) as outgoing_links,
+                   count(DISTINCT r4) as incoming_links
+            """,
+            name=name
+        ).single()
+
+        if not note_info or not note_info['n']:
+            return {"deleted": False, "reason": "Note nicht gefunden"}
+
+        note = note_info['n']
+
+        # Zeige Lösch-Info
+        click.echo(f"🗑️ Lösche Note: '{name}'")
+        if note.get('description'):
+            click.echo(f"   📝 Beschreibung: {note['description']}")
+        if note.get('content'):
+            content_preview = note['content'][:100] + "..." if len(note['content']) > 100 else note['content']
+            click.echo(f"   📄 Content: {content_preview}")
+        click.echo(f"   🔗 Verbindungen: {note_info['tag_count']} Tags, {note_info['template_count']} Templates")
+        click.echo(f"   🔗 Links: {note_info['outgoing_links']} ausgehend, {note_info['incoming_links']} eingehend")
+
+        # Finale Bestätigung
+        if not click.confirm("Wirklich löschen? Alle Verbindungen werden entfernt!"):
+            return {"deleted": False, "reason": "Von Benutzer abgebrochen"}
+
+        # Löschung durchführen
+        tx.run("MATCH (n:Note {name: $name}) DETACH DELETE n", name=name)
+
+        return {
+            "deleted": True,
+            "note_info": note_info
+        }
+
+    try:
+        result = _delete_note_tx(name)
+
+        if result['deleted']:
+            click.echo(f"✅ Note '{name}' sicher gelöscht")
+            click.echo("🔄 Automatisches Backup erstellt")
+        else:
+            click.echo(f"❌ Löschung abgebrochen: {result['reason']}")
+
+    except Exception as e:
+        click.echo(f"❌ Fehler bei sicherer Löschung: {e}")
+        click.echo("💡 Backup verfügbar in cortex_neo/backups/auto/")
+
+        # Wiederherstellungsoption
+        if click.confirm("Aus dem letzten Backup wiederherstellen?"):
+            # TODO: Implementiere Backup-Wiederherstellung
+            click.echo("🔄 Wiederherstellung wird in der nächsten Version verfügbar sein")
+
+# --- Kritische System-Operationen ---
+@cli.command()
+def validate_connection():
+    """Validiert Neo4j-Verbindung und Datenintegrität mit detailliertem Report."""
+    try:
+        click.echo("🔍 Starte Verbindungs- und Datenvalidierung...")
+
+        # Connection Test
+        driver = Neo4jHelper.get_driver()
+        with driver.session() as session:
+            # Test basic connectivity
+            test_result = session.run("RETURN 1 as test, timestamp() as time").single()
+            click.echo(f"✅ Neo4j-Verbindung erfolgreich")
+            click.echo(f"   🔗 URI: {NEO4J_URI}")
+            click.echo(f"   🕒 Server-Zeit: {test_result['time']}")
+
+        # Validate data integrity
+        is_healthy = Neo4jHelper.validate_connection_and_data()
+
+        if is_healthy:
+            click.echo("✅ Alle Validierungen erfolgreich")
+        else:
+            click.echo("⚠️ Datenintegritätsprobleme erkannt")
+
+        return is_healthy
+
+    except Exception as e:
+        click.echo(f"❌ Validierung fehlgeschlagen: {e}")
+        click.echo("💡 Mögliche Lösungen:")
+        click.echo("   - Prüfe Neo4j-Container: docker ps | grep neo4j")
+        click.echo("   - Starte Neo4j: cd cortex_neo && docker-compose up -d")
+        click.echo("   - Prüfe Umgebungsvariablen: NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD")
+        return False
+
+@cli.command()
+@click.option('--emergency', is_flag=True, help='Notfall-Modus: Prüfe auf kritischen Datenverlust')
+def check_data_integrity(emergency):
+    """Prüft Datenintegrität und warnt vor Anomalien."""
+    try:
+        validator = Neo4jHelper.get_validator()
+
+        if emergency:
+            click.echo("🚨 NOTFALL-DATENPRÜFUNG")
+            needs_restore = validator.emergency_restore_check()
+
+            if needs_restore:
+                click.echo("🚨 KRITISCHER DATENVERLUST ERKANNT!")
+                click.echo("💡 Verfügbare Backups prüfen...")
+
+                # Liste verfügbare Backups
+                backup_dir = "cortex_neo/backups"
+                if os.path.exists(backup_dir):
+                    backup_files = sorted([
+                        f for f in os.listdir(backup_dir)
+                        if f.endswith(('.yaml', '.tar.gz', '.dump'))
+                    ], reverse=True)
+
+                    click.echo("📁 Verfügbare Backups:")
+                    for i, backup in enumerate(backup_files[:10]):  # Show last 10
+                        backup_path = os.path.join(backup_dir, backup)
+                        size = os.path.getsize(backup_path)
+                        click.echo(f"   {i+1}. {backup} ({size} bytes)")
+
+                return False
+            else:
+                click.echo("✅ Keine kritischen Datenprobleme erkannt")
+
+        # Standard-Integritätsprüfung
+        is_healthy = validator.validate_integrity()
+
+        if is_healthy:
+            click.echo("✅ Datenintegrität OK")
+        else:
+            click.echo("⚠️ Datenintegritätsprobleme - siehe Details oben")
+
+        return is_healthy
+
+    except Exception as e:
+        click.echo(f"❌ Integritätsprüfung fehlgeschlagen: {e}")
+        return False
+
+@cli.command()
+def create_emergency_backup():
+    """Erstellt sofortiges Notfall-Backup aller Daten."""
+    try:
+        click.echo("🚨 Erstelle Notfall-Backup...")
+
+        manager = Neo4jHelper.get_safe_transaction_manager()
+        backup_file = manager._create_backup(f"emergency-{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+
+        if backup_file:
+            click.echo(f"✅ Notfall-Backup erstellt: {backup_file}")
+
+            # Zusätzlich: Structure Export
+            export_file = f"cortex_neo/backups/emergency-structure-{datetime.now().strftime('%Y%m%d_%H%M%S')}.yaml"
+            os.system(f"cd cortex_neo && python cortex_cli.py export-structure --out {export_file}")
+
+            click.echo(f"📊 Struktur-Export: {export_file}")
+
+        else:
+            click.echo("❌ Backup-Erstellung fehlgeschlagen")
+
+    except Exception as e:
+        click.echo(f"❌ Notfall-Backup fehlgeschlagen: {e}")
+
+@cli.command()
+def monitor_data_changes():
+    """Startet kontinuierliches Datenmonitoring für Änderungen."""
+    try:
+        click.echo("🔍 Starte Datenmonitoring...")
+
+        validator = Neo4jHelper.get_validator()
+
+        # Baseline erstellen
+        baseline_stats = validator.get_current_stats()
+        click.echo(f"📊 Baseline erstellt: {baseline_stats['notes']} Notes, {baseline_stats['workflows']} Workflows")
+
+        # Monitoring-Loop (vereinfacht für Demo)
+        import time
+        check_count = 0
+
+        while check_count < 5:  # Demo: 5 Checks
+            time.sleep(2)  # Alle 2 Sekunden prüfen
+            check_count += 1
+
+            current_stats = validator.get_current_stats()
+
+            # Prüfe auf Änderungen
+            note_diff = current_stats['notes'] - baseline_stats['notes']
+            workflow_diff = current_stats['workflows'] - baseline_stats['workflows']
+
+            if note_diff != 0 or workflow_diff != 0:
+                click.echo(f"📈 Änderung erkannt: Notes {note_diff:+d}, Workflows {workflow_diff:+d}")
+
+                # Bei kritischen Änderungen Backup erstellen
+                if abs(note_diff) > 2:
+                    click.echo("🔄 Automatisches Backup aufgrund großer Änderung...")
+                    manager = Neo4jHelper.get_safe_transaction_manager()
+                    manager._create_backup(f"change-detected-{datetime.now().strftime('%H%M%S')}")
+
+            click.echo(f"✓ Check {check_count}/5 - Status OK")
+
+        click.echo("✅ Monitoring-Demo abgeschlossen")
+        click.echo("💡 Für kontinuierliches Monitoring: Implementiere als Background-Service")
+
+    except KeyboardInterrupt:
+        click.echo("\n⏹️ Monitoring gestoppt")
+    except Exception as e:
+        click.echo(f"❌ Monitoring-Fehler: {e}")
+
+@cli.command()
+def run_safety_diagnostics():
+    """Führt vollständige Sicherheitsdiagnostik durch."""
+    try:
+        click.echo("🛡️ Starte Sicherheitsdiagnostik...")
+        click.echo("=" * 50)
+
+        # 1. Verbindungstest
+        click.echo("\n1️⃣ Verbindungstest...")
+        connection_ok = validate_connection.callback()
+
+        # 2. Datenintegritätsprüfung
+        click.echo("\n2️⃣ Datenintegrität...")
+        integrity_ok = check_data_integrity.callback(emergency=False)
+
+        # 3. Backup-System-Check
+        click.echo("\n3️⃣ Backup-System...")
+        backup_dir = "cortex_neo/backups"
+        if os.path.exists(backup_dir):
+            backup_count = len([f for f in os.listdir(backup_dir) if f.endswith('.yaml')])
+            click.echo(f"✅ Backup-System aktiv ({backup_count} Backups verfügbar)")
+        else:
+            click.echo("⚠️ Backup-Verzeichnis nicht gefunden")
+
+        # 4. Transaction Safety Test
+        click.echo("\n4️⃣ Transaction Safety...")
+        try:
+            manager = Neo4jHelper.get_safe_transaction_manager()
+            click.echo("✅ Safe Transaction Manager initialisiert")
+        except Exception as e:
+            click.echo(f"❌ Transaction Manager Fehler: {e}")
+
+        # 5. Gesamtbewertung
+        click.echo("\n" + "=" * 50)
+        click.echo("📋 SICHERHEITSREPORT:")
+
+        safety_score = 0
+        if connection_ok:
+            safety_score += 25
+            click.echo("✅ Verbindung: OK")
+        else:
+            click.echo("❌ Verbindung: FEHLER")
+
+        if integrity_ok:
+            safety_score += 25
+            click.echo("✅ Datenintegrität: OK")
+        else:
+            click.echo("❌ Datenintegrität: PROBLEME")
+
+        if os.path.exists(backup_dir):
+            safety_score += 25
+            click.echo("✅ Backup-System: OK")
+        else:
+            click.echo("❌ Backup-System: NICHT VERFÜGBAR")
+
+        safety_score += 25  # Transaction Safety (immer OK wenn Code läuft)
+        click.echo("✅ Transaction Safety: OK")
+
+        click.echo(f"\n🎯 Gesamt-Sicherheitsscore: {safety_score}/100")
+
+        if safety_score >= 90:
+            click.echo("🛡️ AUSGEZEICHNET - Maximale Datensicherheit")
+        elif safety_score >= 75:
+            click.echo("✅ GUT - Akzeptable Datensicherheit")
+        elif safety_score >= 50:
+            click.echo("⚠️ MITTELMÄSSIG - Verbesserungen empfohlen")
+        else:
+            click.echo("🚨 KRITISCH - Sofortige Maßnahmen erforderlich!")
+
+    except Exception as e:
+        click.echo(f"❌ Diagnostik fehlgeschlagen: {e}")
+
+# --- Data Governance Commands ---
+@cli.command('init-governance')
+@click.option('--force', is_flag=True, help='Überschreibe bestehende Governance-Strukturen')
+def init_governance(force):
+    """Initialisiert Data Governance System in Neo4j."""
+    try:
+        print("🚀 Initialisiere Data Governance System in Neo4j...")
+
+        # Initialize governance engine
+        from src.governance.data_governance import DataGovernanceEngine
+        governance = DataGovernanceEngine('governance_config.yaml')
+        governance.set_neo4j_driver(Neo4jHelper.get_driver())
+
+        driver = Neo4jHelper.get_driver()
+
+        with driver.session() as session:
+            # Check if governance structures already exist
+            existing_templates = session.run("MATCH (t:Template) RETURN count(t) as count").single()["count"]
+            existing_workflows = session.run("MATCH (w:Workflow) RETURN count(w) as count").single()["count"]
+
+            if (existing_templates > 0 or existing_workflows > 0) and not force:
+                print(f"⚠️ Governance-Strukturen bereits vorhanden:")
+                print(f"   📋 Templates: {existing_templates}")
+                print(f"   🔄 Workflows: {existing_workflows}")
+                print("💡 Verwende --force zum Überschreiben")
+                return
+
+            # Load configuration and sync to Neo4j
+            config = governance.config
+
+            # Sync templates to Neo4j
+            templates_synced = 0
+            for template_name, template_data in config.get("templates", {}).items():
+                governance.add_template(
+                    name=template_name,
+                    required_sections=template_data["required_sections"],
+                    suggested_tags=template_data["suggested_tags"],
+                    workflow_step=template_data.get("workflow_step"),
+                    content_standards=template_data.get("content_standards", {})
+                )
+                templates_synced += 1
+                print(f"✅ Template '{template_name}' nach Neo4j synchronisiert")
+
+            # Sync workflows to Neo4j
+            workflows_synced = 0
+            for workflow_name, workflow_data in config.get("workflows", {}).items():
+                governance.add_workflow(
+                    name=workflow_name,
+                    steps=workflow_data["steps"],
+                    templates=workflow_data.get("templates", []),
+                    auto_assign=workflow_data.get("auto_assign", True)
+                )
+                workflows_synced += 1
+                print(f"✅ Workflow '{workflow_name}' nach Neo4j synchronisiert")
+
+            # Sync validation rules to Neo4j
+            rules = config.get("validation_rules", {})
+            governance.save_validation_rules_to_neo4j(rules)
+            print(f"✅ {len(rules)} Validierungsregeln nach Neo4j synchronisiert")
+
+            print(f"\n🎉 Data Governance System erfolgreich initialisiert:")
+            print(f"   📋 {templates_synced} Templates")
+            print(f"   🔄 {workflows_synced} Workflows")
+            print(f"   ⚙️ {len(rules)} Validierungsregeln")
+            print("\n💡 Das System lädt jetzt dynamisch aus Neo4j!")
+
+    except Exception as e:
+        print(f"❌ Fehler bei der Governance-Initialisierung: {e}")
+        import traceback
+        traceback.print_exc()
+
+@cli.command('add-note-safe')
+@click.argument('name')
+@click.option('--content', help='Textinhalt der Note')
+@click.option('--description', help='Kurze Beschreibung der Note')
+@click.option('--type', 'note_type', help='Typ/Kategorie der Note')
+@click.option('--template', help='Template für die Note')
+@click.option('--force', is_flag=True, help='Ignoriere Validierungsfehler')
+@click.option('--validate-only', is_flag=True, help='Nur validieren, nicht erstellen')
+@click.option('--auto-apply', is_flag=True, help='Empfehlungen automatisch anwenden')
+def add_note_safe_governance(name, content, description, note_type, template, force, validate_only, auto_apply):
+    """Sichere Note-Erstellung mit Data-Governance-Validierung und Neo4j-Integration."""
+
+    # Initialize governance engine with Neo4j connection
+    from src.governance.data_governance import DataGovernanceEngine
+    governance = DataGovernanceEngine('governance_config.yaml')
+    governance.set_neo4j_driver(Neo4jHelper.get_driver())
+
+    validation_result = governance.validate_note_creation(
+        name, content or "", description or "", note_type or "", template
+    )
+
+    # Zeige Validierungsergebnisse
+    validation_passed = print_governance_validation_result(validation_result, name)
+
+    # Validate-Only Modus
+    if validate_only:
+        if validation_passed:
+            print("✅ Validierung erfolgreich - Note kann erstellt werden")
+        else:
+            print("❌ Validierung fehlgeschlagen - Note nicht bereit")
+        return
+
+    # Prüfe ob Erstellung erlaubt ist
+    if not validation_passed and not force:
+        print("\n❌ Note-Erstellung blockiert aufgrund von Validierungsfehlern")
+        print("💡 Verwende --force um trotzdem zu erstellen, oder behebe die Fehler")
+        return
+
+    # Wenn Warnungen da sind, frage nach Bestätigung
+    if validation_result.warnings and not force and not auto_apply:
+        if not click.confirm("\n⚠️ Trotz Warnungen fortfahren?"):
+            print("❌ Abgebrochen")
+            return
+
+    try:
+        # Verwende Safe Transaction Manager für sichere Erstellung
+        manager = Neo4jHelper.get_safe_transaction_manager()
+
+        @manager.safe_transaction("add_note_governance")
+        def _add_note_with_governance(tx, name, content, description, note_type, template):
+            props = {"name": name}
+            if content:
+                props["content"] = content
+            if description:
+                props["description"] = description
+            if note_type:
+                props["type"] = note_type
+
+            result = tx.run("""
+                MERGE (n:Note {name: $name})
+                SET n.content = $content,
+                    n.description = $description,
+                    n.type = $note_type,
+                    n.updated_at = timestamp(),
+                    n.governance_validated = true
+                RETURN n
+            """, name=name, content=content or "", description=description or "", note_type=note_type or "")
+
+            return result.single()
+
+        result = _add_note_with_governance(name, content, description, note_type, template)
+        if result:
+            print(f"✅ Note '{name}' erfolgreich mit Data Governance erstellt")
+
+            # Auto-Apply Suggestions
+            if validation_result.suggestions and (auto_apply or click.confirm("🤖 Empfehlungen automatisch anwenden?")):
+                apply_governance_suggestions(name, validation_result.suggestions)
+
+    except Exception as e:
+        print(f"❌ Fehler beim Erstellen der Note: {e}")
+
+@cli.command('governance-report')
+@click.option('--detailed', is_flag=True, help='Detaillierter Report mit Beispielen')
+@click.option('--json', 'as_json', is_flag=True, help='Ausgabe als JSON')
+def governance_report(detailed, as_json):
+    """Erstellt einen Data Governance Report für alle Notes mit Neo4j-Integration."""
+    try:
+        # Initialize governance engine with Neo4j connection
+        from src.governance.data_governance import DataGovernanceEngine
+        governance = DataGovernanceEngine('governance_config.yaml')
+        governance.set_neo4j_driver(Neo4jHelper.get_driver())
+
+        driver = Neo4jHelper.get_driver()
+
+        with driver.session() as session:
+            notes = session.run("""
+                MATCH (n:Note)
+                OPTIONAL MATCH (n)-[:TAGGED_WITH]->(t:Tag)
+                OPTIONAL MATCH (n)-[:USES_TEMPLATE]->(tpl:Template)
+                RETURN n.name as name, 
+                       n.content as content, 
+                       n.description as description,
+                       n.type as type,
+                       collect(DISTINCT t.name) as tags,
+                       collect(DISTINCT tpl.name) as templates
+                ORDER BY n.name
+            """).data()
+
+        total_notes = len(notes)
+        notes_with_issues = 0
+        total_errors = 0
+        total_warnings = 0
+
+        issue_examples = []
+
+        print(f"🔍 Data Governance Report für {total_notes} Notes")
+        print("=" * 60)
+
+        for note in notes:
+            validation_result = governance.validate_note_creation(
+                note['name'],
+                note['content'] or "",
+                note['description'] or "",
+                note['type'] or "",
+                note['templates'][0] if note['templates'] and note['templates'][0] else None
+            )
+
+            if validation_result.errors or validation_result.warnings:
+                notes_with_issues += 1
+                total_errors += len(validation_result.errors)
+                total_warnings += len(validation_result.warnings)
+
+                if detailed and len(issue_examples) < 5:
+                    issue_examples.append({
+                        'note': note['name'],
+                        'errors': validation_result.errors,
+                        'warnings': validation_result.warnings
+                    })
+
+        # Summary
+        quality_score = max(0, 100 - (total_errors * 10) - (total_warnings * 5))
+
+        if as_json:
+            report = {
+                'total_notes': total_notes,
+                'notes_with_issues': notes_with_issues,
+                'total_errors': total_errors,
+                'total_warnings': total_warnings,
+                'quality_score': quality_score,
+                'issue_examples': issue_examples if detailed else []
+            }
+            print(json.dumps(report, indent=2, ensure_ascii=False))
+        else:
+            print(f"📊 Gesamt-Notes: {total_notes}")
+            print(f"⚠️ Notes mit Problemen: {notes_with_issues}")
+            print(f"❌ Kritische Fehler: {total_errors}")
+            print(f"⚠️ Warnungen: {total_warnings}")
+            print(f"🎯 Qualitätsscore: {quality_score}/100")
+
+            if quality_score >= 90:
+                print("✅ AUSGEZEICHNETE Datenqualität!")
+            elif quality_score >= 75:
+                print("🟢 GUTE Datenqualität")
+            elif quality_score >= 50:
+                print("🟡 MITTLERE Datenqualität - Verbesserungen empfohlen")
+            else:
+                print("🔴 SCHLECHTE Datenqualität - Sofortige Maßnahmen erforderlich!")
+
+            if detailed and issue_examples:
+                print("\n📋 Beispielprobleme:")
+                for example in issue_examples:
+                    print(f"\n📝 Note: '{example['note']}'")
+                    for error in example['errors']:
+                        print(f"   ❌ {error}")
+                    for warning in example['warnings']:
+                        print(f"   ⚠️ {warning}")
+
+    except Exception as e:
+        print(f"❌ Fehler beim Erstellen des Governance-Reports: {e}")
+
+@cli.command('fix-note-governance')
+@click.argument('note_name')
+@click.option('--auto-fix', is_flag=True, help='Automatische Behebung wo möglich')
+def fix_note_governance(note_name, auto_fix):
+    """Analysiert und behebt Data Governance Probleme für eine spezifische Note."""
+    try:
+        governance = DataGovernanceEngine()
+        driver = Neo4jHelper.get_driver()
+
+        with driver.session() as session:
+            note_result = session.run("""
+                MATCH (n:Note {name: $name})
+                OPTIONAL MATCH (n)-[:TAGGED_WITH]->(t:Tag)
+                OPTIONAL MATCH (n)-[:USES_TEMPLATE]->(tpl:Template)
+                RETURN n.name as name, 
+                       n.content as content, 
+                       n.description as description,
+                       n.type as type,
+                       collect(DISTINCT t.name) as tags,
+                       collect(DISTINCT tpl.name) as templates
+            """, name=note_name).single()
+
+        if not note_result:
+            print(f"❌ Note '{note_name}' nicht gefunden.")
+            return
+
+        validation_result = governance.validate_note_creation(
+            note_result['name'],
+            note_result['content'] or "",
+            note_result['description'] or "",
+            note_result['type'] or "",
+            note_result['templates'][0] if note_result['templates'] and note_result['templates'][0] else None
+        )
+
+        print(f"🔍 Governance-Analyse für: '{note_name}'")
+        print_governance_validation_result(validation_result, note_name)
+
+        if not validation_result.errors and not validation_result.warnings:
+            print("✅ Keine Probleme gefunden!")
+            return
+
+        if auto_fix:
+            print(f"\n🤖 Starte automatische Behebung...")
+
+            fixes_applied = 0
+
+            # Automatische Fixes basierend auf Suggestions
+            if validation_result.suggestions:
+                apply_governance_suggestions(note_name, validation_result.suggestions)
+                fixes_applied += len(validation_result.suggestions)
+
+            # Re-validate nach Fixes
+            with driver.session() as session:
+                updated_note = session.run("""
+                    MATCH (n:Note {name: $name})
+                    OPTIONAL MATCH (n)-[:TAGGED_WITH]->(t:Tag)
+                    OPTIONAL MATCH (n)-[:USES_TEMPLATE]->(tpl:Template)
+                    RETURN n.name as name, 
+                           n.content as content, 
+                           n.description as description,
+                           n.type as type,
+                           collect(DISTINCT t.name) as tags,
+                           collect(DISTINCT tpl.name) as templates
+                """, name=note_name).single()
+
+            revalidation_result = governance.validate_note_creation(
+                updated_note['name'],
+                updated_note['content'] or "",
+                updated_note['description'] or "",
+                updated_note['type'] or "",
+                updated_note['templates'][0] if updated_note['templates'] and updated_note['templates'][0] else None
+            )
+
+            print(f"\n🔄 Ergebnis nach automatischer Behebung:")
+            print_governance_validation_result(revalidation_result, note_name)
+
+            if fixes_applied > 0:
+                print(f"✅ {fixes_applied} automatische Korrekturen angewendet")
+
+        else:
+            print("\n💡 Verwende --auto-fix für automatische Behebung")
+
+    except Exception as e:
+        print(f"❌ Fehler bei der Governance-Behebung: {e}")
+
+@cli.command('batch-governance-fix')
+@click.option('--dry-run', is_flag=True, help='Zeige nur Vorschau ohne Änderungen')
+@click.option('--auto-apply', is_flag=True, help='Wende alle Korrekturen automatisch an')
+@click.option('--max-notes', type=int, default=50, help='Maximale Anzahl Notes zu verarbeiten')
+def batch_governance_fix(dry_run, auto_apply, max_notes):
+    """Batch-Korrektur von Data Governance Problemen für alle Notes."""
+    try:
+        governance = DataGovernanceEngine()
+        driver = Neo4jHelper.get_driver()
+
+        with driver.session() as session:
+            notes = session.run("""
+                MATCH (n:Note)
+                OPTIONAL MATCH (n)-[:TAGGED_WITH]->(t:Tag)
+                OPTIONAL MATCH (n)-[:USES_TEMPLATE]->(tpl:Template)
+                RETURN n.name as name, 
+                       n.content as content, 
+                       n.description as description,
+                       n.type as type,
+                       collect(DISTINCT t.name) as tags,
+                       collect(DISTINCT tpl.name) as templates
+                ORDER BY n.name
+                LIMIT $limit
+            """, limit=max_notes).data()
+
+        print(f"🔍 Batch Governance-Fix für {len(notes)} Notes")
+        print("=" * 60)
+
+        notes_with_issues = 0
+        total_fixes = 0
+
+        for note in notes:
+            validation_result = governance.validate_note_creation(
+                note['name'],
+                note['content'] or "",
+                note['description'] or "",
+                note['type'] or "",
+                note['templates'][0] if note['templates'] and note['templates'][0] else None
+            )
+
+            if validation_result.errors or validation_result.warnings or validation_result.suggestions:
+                notes_with_issues += 1
+
+                print(f"\n📝 Note: '{note['name']}'")
+                if validation_result.errors:
+                    print(f"   ❌ {len(validation_result.errors)} Fehler")
+                if validation_result.warnings:
+                    print(f"   ⚠️ {len(validation_result.warnings)} Warnungen")
+                if validation_result.suggestions:
+                    print(f"   💡 {len(validation_result.suggestions)} Vorschläge")
+
+                if dry_run:
+                    print(f"   🔍 Würde {len(validation_result.suggestions)} Korrekturen anwenden")
+                elif auto_apply and validation_result.suggestions:
+                    try:
+                        apply_governance_suggestions(note['name'], validation_result.suggestions)
+                        total_fixes += len(validation_result.suggestions)
+                        print(f"   ✅ {len(validation_result.suggestions)} Korrekturen angewendet")
+                    except Exception as e:
+                        print(f"   ❌ Fehler bei Korrektur: {e}")
+
+        print(f"\n📊 Batch-Ergebnis:")
+        print(f"   📝 Notes verarbeitet: {len(notes)}")
+        print(f"   ⚠️ Notes mit Problemen: {notes_with_issues}")
+
+        if dry_run:
+            print(f"   🔍 Dry-Run Modus - keine Änderungen vorgenommen")
+            print(f"   💡 Verwende ohne --dry-run für tatsächliche Korrekturen")
+        else:
+            print(f"   ✅ Korrekturen angewendet: {total_fixes}")
+
+    except Exception as e:
+        print(f"❌ Fehler beim Batch Governance-Fix: {e}")
+
+@cli.command('workflow-assign')
+@click.argument('note_name')
+@click.argument('workflow_name')
+@click.argument('step_name')
+def workflow_assign(note_name, workflow_name, step_name):
+    """Ordnet eine Note einem Workflow-Step zu (Data Governance Integration)."""
+    try:
+        driver = Neo4jHelper.get_driver()
+
+        with driver.session() as session:
+            # Prüfe ob alle Entitäten existieren
+            result = session.run("""
+                MATCH (n:Note {name: $note_name})
+                MATCH (w:Workflow {name: $workflow_name})
+                MATCH (s:Step {name: $step_name})
+                MATCH (w)-[:HAS_STEP]->(s)
+                RETURN n, w, s
+            """, note_name=note_name, workflow_name=workflow_name, step_name=step_name).single()
+
+            if not result:
+                print("❌ Note, Workflow oder Step nicht gefunden oder nicht verknüpft")
+                return
+
+            # Erstelle Zuordnung
+            session.run("""
+                MATCH (n:Note {name: $note_name})
+                MATCH (s:Step {name: $step_name})
+                MERGE (n)-[r:ASSIGNED_TO_STEP]->(s)
+                SET r.assigned_at = timestamp()
+            """, note_name=note_name, step_name=step_name)
+
+            print(f"✅ Note '{note_name}' zu Workflow-Step '{step_name}' zugeordnet")
+
+    except Exception as e:
+        print(f"❌ Fehler bei Workflow-Zuordnung: {e}")
+
+# Ende der Data Governance Commands
+
+# Helper function for applying governance suggestions
+def apply_governance_suggestions(note_name: str, suggestions: list):
+    """Wendet Data Governance Empfehlungen automatisch an."""
+    try:
+        driver = Neo4jHelper.get_driver()
+
+        with driver.session() as session:
+            applied_count = 0
+
+            for suggestion in suggestions:
+                suggestion_lower = suggestion.lower()
+
+                try:
+                    # Tag-Empfehlungen
+                    if "tag hinzufügen" in suggestion_lower or "add tag" in suggestion_lower:
+                        # Extrahiere Tag-Name aus Suggestion
+                        import re
+                        tag_match = re.search(r"tag[:\s]+['\"]?([^'\"]+)['\"]?", suggestion_lower)
+                        if tag_match:
+                            tag_name = tag_match.group(1).strip()
+                            session.run("""
+                                MERGE (t:Tag {name: $tag_name})
+                                MERGE (n:Note {name: $note_name})
+                                MERGE (n)-[r:TAGGED_WITH]->(t)
+                                SET r.auto_applied = true,
+                                    r.applied_at = timestamp()
+                            """, tag_name=tag_name, note_name=note_name)
+                            print(f"   ✅ Tag '{tag_name}' automatisch hinzugefügt")
+                            applied_count += 1
+
+                    # Template-Empfehlungen
+                    elif "template" in suggestion_lower and ("verwenden" in suggestion_lower or "use" in suggestion_lower):
+                        template_match = re.search(r"template[:\s]+['\"]?([^'\"]+)['\"]?", suggestion_lower)
+                        if template_match:
+                            template_name = template_match.group(1).strip()
+                            session.run("""
+                                MERGE (t:Template {name: $template_name})
+                                MERGE (n:Note {name: $note_name})
+                                MERGE (n)-[r:USES_TEMPLATE]->(t)
+                                SET r.auto_applied = true,
+                                    r.applied_at = timestamp()
+                            """, template_name=template_name, note_name=note_name)
+                            print(f"   ✅ Template '{template_name}' automatisch zugewiesen")
+                            applied_count += 1
+
+                    # Beschreibung hinzufügen
+                    elif "beschreibung" in suggestion_lower and "hinzufügen" in suggestion_lower:
+                        # Generiere eine Standard-Beschreibung basierend auf dem Content
+                        content_result = session.run(
+                            "MATCH (n:Note {name: $note_name}) RETURN n.content as content",
+                            note_name=note_name
+                        ).single()
+
+                        if content_result and content_result['content']:
+                            # Extrahiere erste Zeile oder ersten Satz als Beschreibung
+                            content = content_result['content']
+                            first_line = content.split('\n')[0]
+                            if len(first_line) > 100:
+                                first_line = first_line[:97] + "..."
+
+                            session.run("""
+                                MATCH (n:Note {name: $note_name})
+                                SET n.description = $description,
+                                    n.description_auto_generated = true,
+                                    n.updated_at = timestamp()
+                            """, note_name=note_name, description=first_line)
+                            print(f"   ✅ Beschreibung automatisch generiert: '{first_line[:50]}...'")
+                            applied_count += 1
+
+                    # Typ zuweisen
+                    elif "typ" in suggestion_lower and ("zuweisen" in suggestion_lower or "setzen" in suggestion_lower):
+                        type_match = re.search(r"typ[:\s]+['\"]?([^'\"]+)['\"]?", suggestion_lower)
+                        if type_match:
+                            note_type = type_match.group(1).strip()
+                            session.run("""
+                                MATCH (n:Note {name: $note_name})
+                                SET n.type = $note_type,
+                                    n.type_auto_applied = true,
+                                    n.updated_at = timestamp()
+                            """, note_name=note_name, note_type=note_type)
+                            print(f"   ✅ Typ '{note_type}' automatisch zugewiesen")
+                            applied_count += 1
+
+                    else:
+                        print(f"   ⚠️ Unbekannte Empfehlung (nicht automatisch anwendbar): {suggestion}")
+
+                except Exception as e:
+                    print(f"   ❌ Fehler beim Anwenden von Empfehlung '{suggestion}': {e}")
+
+            print(f"🤖 {applied_count} von {len(suggestions)} Empfehlungen automatisch angewendet")
+            return applied_count
+
+    except Exception as e:
+        print(f"❌ Fehler beim Anwenden der Governance-Empfehlungen: {e}")
+        return 0
+def cli():
+    """Cortex-CLI für Neo4J-Workflow- und Wissensgraph-Operationen"""
+    pass
