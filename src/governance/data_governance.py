@@ -11,20 +11,23 @@ import os
 import json
 
 # Neo4j Integration - kann durch Umgebungsvariable deaktiviert werden
-NEO4J_DISABLED = os.environ.get('NEO4J_DISABLED', '').lower() in ('1', 'true', 'yes')
+NEO4J_DISABLED = os.environ.get("NEO4J_DISABLED", "").lower() in ("1", "true", "yes")
 
 try:
     if NEO4J_DISABLED:
         raise ImportError("Neo4j intentionally disabled")
     from neo4j import GraphDatabase
+
     NEO4J_AVAILABLE = True
 except ImportError:
     NEO4J_AVAILABLE = False
 
+
 class ValidationLevel(Enum):
-    STRICT = "strict"      # Blockiert bei Fehlern
-    WARNING = "warning"    # Warnt, aber erlaubt
-    LENIENT = "lenient"    # Nur Logging
+    STRICT = "strict"  # Blockiert bei Fehlern
+    WARNING = "warning"  # Warnt, aber erlaubt
+    LENIENT = "lenient"  # Nur Logging
+
 
 @dataclass
 class ValidationResult:
@@ -32,6 +35,7 @@ class ValidationResult:
     errors: List[str]
     warnings: List[str]
     suggestions: List[str]
+
 
 class Neo4jTemplateManager:
     """Verwaltet Templates in Neo4j als primäre Datenquelle"""
@@ -51,6 +55,7 @@ class Neo4jTemplateManager:
 
         try:
             from neo4j.exceptions import ServiceUnavailable
+
             self.driver = GraphDatabase.driver(self.uri, auth=(self.user, self.password))
             # Verwende einen sehr kurzen Timeout für die Connectivity-Prüfung
             self.driver.verify_connectivity()
@@ -93,20 +98,20 @@ class Neo4jTemplateManager:
                 result = session.run(query, project_type=project_type, keywords=keywords)
 
                 for record in result:
-                    template_name = record['name']
+                    template_name = record["name"]
                     standards = {}
-                    if record['standards_json']:
+                    if record["standards_json"]:
                         try:
-                            standards = json.loads(record['standards_json'])
+                            standards = json.loads(record["standards_json"])
                         except:
                             standards = {}
 
                     templates[template_name] = {
-                        'required_sections': record['sections'] or [],
-                        'suggested_tags': record['tags'] or [],
-                        'workflow_step': record['workflow_step'],
-                        'content_standards': standards,
-                        'relevance_score': record['keyword_matches']
+                        "required_sections": record["sections"] or [],
+                        "suggested_tags": record["tags"] or [],
+                        "workflow_step": record["workflow_step"],
+                        "content_standards": standards,
+                        "relevance_score": record["keyword_matches"],
                     }
         except Exception as e:
             # Graceful error handling - return empty dict on any Neo4j errors
@@ -114,7 +119,9 @@ class Neo4jTemplateManager:
 
         return templates
 
-    def create_template_if_missing(self, project_type: str, project_name: str, keywords: List[str] = None) -> Dict:
+    def create_template_if_missing(
+        self, project_type: str, project_name: str, keywords: List[str] = None
+    ) -> Dict:
         """Erstellt automatisch ein Template falls keines existiert"""
         if not self.is_connected():
             return {}
@@ -133,7 +140,8 @@ class Neo4jTemplateManager:
 
             # In Neo4j speichern
             with self.driver.session() as session:
-                session.run("""
+                session.run(
+                    """
                     MERGE (t:Template {name: $name})
                     SET t.required_sections = $sections,
                         t.suggested_tags = $tags,
@@ -144,21 +152,25 @@ class Neo4jTemplateManager:
                         t.auto_generated = true,
                         t.usage_count = 0
                 """,
-                name=template_name,
-                sections=template_config['required_sections'],
-                tags=template_config['suggested_tags'],
-                workflow_step=template_config['workflow_step'],
-                standards=json.dumps(template_config['content_standards']),
-                project_type=project_type
+                    name=template_name,
+                    sections=template_config["required_sections"],
+                    tags=template_config["suggested_tags"],
+                    workflow_step=template_config["workflow_step"],
+                    standards=json.dumps(template_config["content_standards"]),
+                    project_type=project_type,
                 )
 
                 # Keywords verknüpfen
                 for keyword in keywords or []:
-                    session.run("""
+                    session.run(
+                        """
                         MERGE (k:Keyword {name: $keyword})
                         MERGE (t:Template {name: $template_name})
                         MERGE (t)-[:CONTAINS_KEYWORD]->(k)
-                    """, keyword=keyword, template_name=template_name)
+                    """,
+                        keyword=keyword,
+                        template_name=template_name,
+                    )
 
             return {template_name: template_config}
         except Exception as e:
@@ -168,61 +180,61 @@ class Neo4jTemplateManager:
     def _generate_template_config(self, project_type: str, keywords: List[str]) -> Dict:
         """Generiert Template-Konfiguration basierend auf Projekt-Typ"""
         base_configs = {
-            'research': {
-                'required_sections': ['abstract', 'methodology', 'results', 'conclusion'],
-                'suggested_tags': ['research', 'analysis', 'findings'],
-                'workflow_step': 'research',
-                'content_standards': {
-                    'min_length': 1000,
-                    'required_keywords': ['hypothesis', 'data', 'analysis']
-                }
+            "research": {
+                "required_sections": ["abstract", "methodology", "results", "conclusion"],
+                "suggested_tags": ["research", "analysis", "findings"],
+                "workflow_step": "research",
+                "content_standards": {
+                    "min_length": 1000,
+                    "required_keywords": ["hypothesis", "data", "analysis"],
+                },
             },
-            'development': {
-                'required_sections': ['overview', 'requirements', 'architecture', 'implementation'],
-                'suggested_tags': ['development', 'technical', 'implementation'],
-                'workflow_step': 'development',
-                'content_standards': {
-                    'min_length': 500,
-                    'required_keywords': ['requirements', 'architecture', 'code']
-                }
+            "development": {
+                "required_sections": ["overview", "requirements", "architecture", "implementation"],
+                "suggested_tags": ["development", "technical", "implementation"],
+                "workflow_step": "development",
+                "content_standards": {
+                    "min_length": 500,
+                    "required_keywords": ["requirements", "architecture", "code"],
+                },
             },
-            'documentation': {
-                'required_sections': ['purpose', 'overview', 'usage', 'examples'],
-                'suggested_tags': ['documentation', 'guide', 'reference'],
-                'workflow_step': 'documentation',
-                'content_standards': {
-                    'min_length': 300,
-                    'required_keywords': ['usage', 'example', 'guide']
-                }
+            "documentation": {
+                "required_sections": ["purpose", "overview", "usage", "examples"],
+                "suggested_tags": ["documentation", "guide", "reference"],
+                "workflow_step": "documentation",
+                "content_standards": {
+                    "min_length": 300,
+                    "required_keywords": ["usage", "example", "guide"],
+                },
             },
-            'meeting': {
-                'required_sections': ['attendees', 'agenda', 'decisions', 'action_items'],
-                'suggested_tags': ['meeting', 'decision', 'action'],
-                'workflow_step': 'coordination',
-                'content_standards': {
-                    'min_length': 200,
-                    'required_keywords': ['attendees', 'decisions', 'actions']
-                }
-            }
+            "meeting": {
+                "required_sections": ["attendees", "agenda", "decisions", "action_items"],
+                "suggested_tags": ["meeting", "decision", "action"],
+                "workflow_step": "coordination",
+                "content_standards": {
+                    "min_length": 200,
+                    "required_keywords": ["attendees", "decisions", "actions"],
+                },
+            },
         }
 
         # Standard-Template für unbekannte Typen
         default_config = {
-            'required_sections': ['overview', 'content', 'summary'],
-            'suggested_tags': ['general', project_type],
-            'workflow_step': 'general',
-            'content_standards': {
-                'min_length': 250,
-                'required_keywords': keywords[:3] if keywords else []
-            }
+            "required_sections": ["overview", "content", "summary"],
+            "suggested_tags": ["general", project_type],
+            "workflow_step": "general",
+            "content_standards": {
+                "min_length": 250,
+                "required_keywords": keywords[:3] if keywords else [],
+            },
         }
 
         config = base_configs.get(project_type.lower(), default_config)
 
         # Keywords integrieren
         if keywords:
-            config['suggested_tags'].extend(keywords[:2])
-            config['content_standards']['required_keywords'].extend(keywords[:2])
+            config["suggested_tags"].extend(keywords[:2])
+            config["content_standards"]["required_keywords"].extend(keywords[:2])
 
         return config
 
@@ -233,14 +245,18 @@ class Neo4jTemplateManager:
 
         try:
             with self.driver.session() as session:
-                session.run("""
+                session.run(
+                    """
                     MATCH (t:Template {name: $name})
                     SET t.usage_count = coalesce(t.usage_count, 0) + 1,
                         t.last_used = datetime()
-                """, name=template_name)
+                """,
+                    name=template_name,
+                )
         except Exception as e:
             # Graceful handling - log but don't fail
             pass
+
 
 class DataGovernanceEngine:
     def __init__(self, config_file: str = None):
@@ -259,7 +275,9 @@ class DataGovernanceEngine:
         # Driver für Kompatibilität - wird nicht mehr direkt verwendet
         self.driver = None
 
-    def get_templates_for_context(self, project_type: str = None, project_name: str = None, keywords: List[str] = None) -> Dict:
+    def get_templates_for_context(
+        self, project_type: str = None, project_name: str = None, keywords: List[str] = None
+    ) -> Dict:
         """Intelligente Template-Auswahl basierend auf Kontext"""
 
         # Zuerst aus Neo4j versuchen
@@ -278,9 +296,16 @@ class DataGovernanceEngine:
         # Fallback: Templates aus lokaler Konfiguration
         return self.get_templates()
 
-    def validate_note_creation_with_context(self, name: str, content: str, description: str,
-                                          note_type: str = "", project_type: str = None,
-                                          project_name: str = None, keywords: List[str] = None) -> ValidationResult:
+    def validate_note_creation_with_context(
+        self,
+        name: str,
+        content: str,
+        description: str,
+        note_type: str = "",
+        project_type: str = None,
+        project_name: str = None,
+        keywords: List[str] = None,
+    ) -> ValidationResult:
         """Erweiterte Validierung mit automatischer Template-Erkennung"""
 
         # Keywords aus Content extrahieren falls nicht gegeben
@@ -304,18 +329,32 @@ class DataGovernanceEngine:
         """Extrahiert relevante Keywords aus Content"""
         # Einfache Keyword-Extraktion - kann mit NLP erweitert werden
         common_tech_keywords = [
-            'python', 'javascript', 'react', 'api', 'database', 'ml', 'ai',
-            'framework', 'library', 'development', 'research', 'analysis',
-            'meeting', 'project', 'documentation', 'guide', 'tutorial'
+            "python",
+            "javascript",
+            "react",
+            "api",
+            "database",
+            "ml",
+            "ai",
+            "framework",
+            "library",
+            "development",
+            "research",
+            "analysis",
+            "meeting",
+            "project",
+            "documentation",
+            "guide",
+            "tutorial",
         ]
 
         # Erweiterte Keywords für zusammengesetzte Begriffe
         compound_keywords = {
-            'machine learning': ['ml', 'machine', 'learning'],
-            'artificial intelligence': ['ai', 'artificial', 'intelligence'],
-            'data science': ['data', 'science'],
-            'web development': ['web', 'development'],
-            'software engineering': ['software', 'engineering']
+            "machine learning": ["ml", "machine", "learning"],
+            "artificial intelligence": ["ai", "artificial", "intelligence"],
+            "data science": ["data", "science"],
+            "web development": ["web", "development"],
+            "software engineering": ["software", "engineering"],
         }
 
         content_lower = content.lower()
@@ -353,10 +392,12 @@ class DataGovernanceEngine:
         best_score = 0
 
         for template_name, template_config in templates.items():
-            score = template_config.get('relevance_score', 0)
+            score = template_config.get("relevance_score", 0)
 
             # Zusätzliche Punkte für matching Keywords
-            template_keywords = template_config.get('content_standards', {}).get('required_keywords', [])
+            template_keywords = template_config.get("content_standards", {}).get(
+                "required_keywords", []
+            )
             keyword_matches = len(set(keywords) & set(template_keywords))
             score += keyword_matches * 2
 
@@ -371,9 +412,14 @@ class DataGovernanceEngine:
         return {
             "workflows": {
                 "Python Knowledge Base": {
-                    "steps": ["Grundlagen", "Frameworks", "Testing & Automation", "Machine Learning"],
+                    "steps": [
+                        "Grundlagen",
+                        "Frameworks",
+                        "Testing & Automation",
+                        "Machine Learning",
+                    ],
                     "templates": ["Python Framework", "Programmiersprache-Geschichte"],
-                    "auto_assign": True
+                    "auto_assign": True,
                 }
             },
             "templates": {
@@ -384,8 +430,8 @@ class DataGovernanceEngine:
                     "content_standards": {
                         "min_length": 150,
                         "required_keywords": ["python"],
-                        "optional_keywords": ["framework", "web"]
-                    }
+                        "optional_keywords": ["framework", "web"],
+                    },
                 },
                 "Programmiersprache-Geschichte": {
                     "required_sections": ["Entstehung", "Entwicklung"],
@@ -394,9 +440,9 @@ class DataGovernanceEngine:
                     "content_standards": {
                         "min_length": 200,
                         "required_keywords": ["entwicklung"],
-                        "optional_keywords": ["geschichte", "python"]
-                    }
-                }
+                        "optional_keywords": ["geschichte", "python"],
+                    },
+                },
             },
             "validation_rules": {
                 "name_min_length": 3,
@@ -405,8 +451,8 @@ class DataGovernanceEngine:
                 "duplicate_threshold": 0.7,
                 "auto_suggest_templates": True,
                 "auto_suggest_workflow_steps": True,
-                "auto_suggest_tags": True
-            }
+                "auto_suggest_tags": True,
+            },
         }
 
     def _load_external_config(self, config_file: str):
@@ -415,10 +461,10 @@ class DataGovernanceEngine:
             import json
             import yaml
 
-            with open(config_file, 'r', encoding='utf-8') as f:
-                if config_file.endswith('.json'):
+            with open(config_file, "r", encoding="utf-8") as f:
+                if config_file.endswith(".json"):
                     external_config = json.load(f)
-                elif config_file.endswith('.yaml') or config_file.endswith('.yml'):
+                elif config_file.endswith(".yaml") or config_file.endswith(".yml"):
                     external_config = yaml.safe_load(f)
                 else:
                     raise ValueError(f"Unsupported config format: {config_file}")
@@ -458,29 +504,39 @@ class DataGovernanceEngine:
             return self._load_templates_from_neo4j()
         return self.config.get("templates", {})
 
-    def add_workflow(self, name: str, steps: List[str], templates: List[str] = None, auto_assign: bool = True):
+    def add_workflow(
+        self, name: str, steps: List[str], templates: List[str] = None, auto_assign: bool = True
+    ):
         """Fügt dynamisch einen neuen Workflow hinzu."""
         self.config["workflows"][name] = {
             "steps": steps,
             "templates": templates or [],
-            "auto_assign": auto_assign
+            "auto_assign": auto_assign,
         }
 
         if self.driver:
             self._save_workflow_to_neo4j(name, steps, templates, auto_assign)
 
-    def add_template(self, name: str, required_sections: List[str], suggested_tags: List[str] = None,
-                    workflow_step: str = None, content_standards: dict = None):
+    def add_template(
+        self,
+        name: str,
+        required_sections: List[str],
+        suggested_tags: List[str] = None,
+        workflow_step: str = None,
+        content_standards: dict = None,
+    ):
         """Fügt dynamisch ein neues Template hinzu."""
         self.config["templates"][name] = {
             "required_sections": required_sections,
             "suggested_tags": suggested_tags or [],
             "workflow_step": workflow_step,
-            "content_standards": content_standards or {"min_length": 100}
+            "content_standards": content_standards or {"min_length": 100},
         }
 
         if self.driver:
-            self._save_template_to_neo4j(name, required_sections, suggested_tags, workflow_step, content_standards)
+            self._save_template_to_neo4j(
+                name, required_sections, suggested_tags, workflow_step, content_standards
+            )
 
     def update_validation_rules(self, rules: dict):
         """Aktualisiert Validierungsregeln dynamisch."""
@@ -492,7 +548,8 @@ class DataGovernanceEngine:
         """Lädt Workflows dynamisch aus Neo4j."""
         try:
             with self.driver.session() as session:
-                result = session.run("""
+                result = session.run(
+                    """
                     MATCH (w:Workflow)
                     OPTIONAL MATCH (w)-[:HAS_STEP]->(s:Step)
                     OPTIONAL MATCH (w)-[:USES_TEMPLATE]->(t:Template)
@@ -501,19 +558,20 @@ class DataGovernanceEngine:
                            collect(DISTINCT {name: s.name, order: s.order}) as steps,
                            collect(DISTINCT t.name) as templates
                     ORDER BY w.name
-                """)
+                """
+                )
 
                 workflows = {}
                 for record in result:
                     # Steps nach Order sortieren
-                    steps_data = [s for s in record["steps"] if s['name']]
-                    steps_data.sort(key=lambda x: x.get('order', 0))
-                    step_names = [s['name'] for s in steps_data]
+                    steps_data = [s for s in record["steps"] if s["name"]]
+                    steps_data.sort(key=lambda x: x.get("order", 0))
+                    step_names = [s["name"] for s in steps_data]
 
                     workflows[record["workflow_name"]] = {
                         "steps": step_names,
                         "templates": [t for t in record["templates"] if t],
-                        "auto_assign": record["auto_assign"] or True
+                        "auto_assign": record["auto_assign"] or True,
                     }
                 return workflows
         except Exception as e:
@@ -524,7 +582,8 @@ class DataGovernanceEngine:
         """Lädt Templates dynamisch aus Neo4j."""
         try:
             with self.driver.session() as session:
-                result = session.run("""
+                result = session.run(
+                    """
                     MATCH (t:Template)
                     RETURN t.name as template_name,
                            t.required_sections as required_sections,
@@ -534,78 +593,102 @@ class DataGovernanceEngine:
                            t.min_length as min_length,
                            t.required_keywords as required_keywords,
                            t.optional_keywords as optional_keywords
-                """)
+                """
+                )
 
                 templates = {}
                 for record in result:
                     # Behandle verschiedene Neo4j-Datentypen
                     required_sections = record["required_sections"] or []
                     if isinstance(required_sections, str):
-                        required_sections = [s.strip() for s in required_sections.split(',')]
+                        required_sections = [s.strip() for s in required_sections.split(",")]
 
                     suggested_tags = record["suggested_tags"] or []
                     if isinstance(suggested_tags, str):
-                        suggested_tags = [s.strip() for s in suggested_tags.split(',')]
+                        suggested_tags = [s.strip() for s in suggested_tags.split(",")]
 
                     required_keywords = record["required_keywords"] or []
                     if isinstance(required_keywords, str):
-                        required_keywords = [s.strip() for s in required_keywords.split(',')]
+                        required_keywords = [s.strip() for s in required_keywords.split(",")]
 
                     optional_keywords = record["optional_keywords"] or []
                     if isinstance(optional_keywords, str):
-                        optional_keywords = [s.strip() for s in optional_keywords.split(',')]
+                        optional_keywords = [s.strip() for s in optional_keywords.split(",")]
 
                     templates[record["template_name"]] = {
                         "required_sections": required_sections,
                         "suggested_tags": suggested_tags,
                         "workflow_step": record["workflow_step"],
                         "content_standards": {
-                            "min_length": record["min_length"] or record.get("content_standards", {}).get("min_length", 100),
+                            "min_length": record["min_length"]
+                            or record.get("content_standards", {}).get("min_length", 100),
                             "required_keywords": required_keywords,
-                            "optional_keywords": optional_keywords
-                        }
+                            "optional_keywords": optional_keywords,
+                        },
                     }
                 return templates
         except Exception as e:
             print(f"⚠️ Fehler beim Laden der Templates aus Neo4j: {e}")
             return self.config.get("templates", {})
 
-    def _save_workflow_to_neo4j(self, name: str, steps: List[str], templates: List[str], auto_assign: bool):
+    def _save_workflow_to_neo4j(
+        self, name: str, steps: List[str], templates: List[str], auto_assign: bool
+    ):
         """Speichert Workflow in Neo4j."""
         try:
             with self.driver.session() as session:
                 # Workflow erstellen
-                session.run("""
+                session.run(
+                    """
                     MERGE (w:Workflow {name: $name})
                     SET w.auto_assign = $auto_assign
-                """, name=name, auto_assign=auto_assign)
+                """,
+                    name=name,
+                    auto_assign=auto_assign,
+                )
 
                 # Steps hinzufügen
                 for i, step in enumerate(steps):
-                    session.run("""
+                    session.run(
+                        """
                         MERGE (s:Step {name: $step})
                         SET s.order = $order
                         WITH s
                         MATCH (w:Workflow {name: $workflow})
                         MERGE (w)-[:HAS_STEP]->(s)
-                    """, step=step, order=i+1, workflow=name)
+                    """,
+                        step=step,
+                        order=i + 1,
+                        workflow=name,
+                    )
 
                 # Templates verknüpfen
                 for template in templates or []:
-                    session.run("""
+                    session.run(
+                        """
                         MATCH (w:Workflow {name: $workflow}), (t:Template {name: $template})
                         MERGE (w)-[:USES_TEMPLATE]->(t)
-                    """, workflow=name, template=template)
+                    """,
+                        workflow=name,
+                        template=template,
+                    )
 
         except Exception as e:
             print(f"⚠️ Fehler beim Speichern des Workflows in Neo4j: {e}")
 
-    def _save_template_to_neo4j(self, name: str, required_sections: List[str],
-                               suggested_tags: List[str], workflow_step: str, content_standards: dict):
+    def _save_template_to_neo4j(
+        self,
+        name: str,
+        required_sections: List[str],
+        suggested_tags: List[str],
+        workflow_step: str,
+        content_standards: dict,
+    ):
         """Speichert Template in Neo4j."""
         try:
             with self.driver.session() as session:
-                session.run("""
+                session.run(
+                    """
                     MERGE (t:Template {name: $name})
                     SET t.required_sections = $required_sections,
                         t.suggested_tags = $suggested_tags,
@@ -615,21 +698,26 @@ class DataGovernanceEngine:
                         t.optional_keywords = $optional_keywords,
                         t.updated_at = timestamp()
                 """,
-                name=name,
-                required_sections=required_sections,
-                suggested_tags=suggested_tags,
-                workflow_step=workflow_step,
-                min_length=content_standards.get("min_length", 100),
-                required_keywords=content_standards.get("required_keywords", []),
-                optional_keywords=content_standards.get("optional_keywords", [])
+                    name=name,
+                    required_sections=required_sections,
+                    suggested_tags=suggested_tags,
+                    workflow_step=workflow_step,
+                    min_length=content_standards.get("min_length", 100),
+                    required_keywords=content_standards.get("required_keywords", []),
+                    optional_keywords=content_standards.get("optional_keywords", []),
                 )
         except Exception as e:
             print(f"⚠️ Fehler beim Speichern des Templates in Neo4j: {e}")
 
-    def validate_note_creation(self, name: str, content: str,
-                             description: str, note_type: str,
-                             template: str = None,
-                             workflow_step: str = None) -> ValidationResult:
+    def validate_note_creation(
+        self,
+        name: str,
+        content: str,
+        description: str,
+        note_type: str,
+        template: str = None,
+        workflow_step: str = None,
+    ) -> ValidationResult:
         """Hauptvalidierung für Note-Erstellung mit flexibler Konfiguration."""
 
         result = ValidationResult(passed=True, errors=[], warnings=[], suggestions=[])
@@ -641,7 +729,7 @@ class DataGovernanceEngine:
         self._validate_required_fields(result, name, content, description, rules)
         self._validate_naming_conventions(result, name)
         self._validate_content_quality(result, content)
-        
+
         # 2. Template-Validierung (dynamisch)
         templates = self.get_templates()
         if template and template in templates:
@@ -667,23 +755,30 @@ class DataGovernanceEngine:
         # 5. Duplikat-Warnung (konfigurierbar)
         if self._check_potential_duplicate_dynamic(name, rules.get("duplicate_threshold", 0.7)):
             result.warnings.append(f"Ähnlicher Name bereits vorhanden")
-        
+
         # Bestimme Gesamtergebnis
         result.passed = len(result.errors) == 0
-        
+
         return result
-    
-    def _validate_required_fields(self, result: ValidationResult, 
-                                name: str, content: str, description: str, rules: dict):
+
+    def _validate_required_fields(
+        self, result: ValidationResult, name: str, content: str, description: str, rules: dict
+    ):
         """Validiert Pflichtfelder."""
         if not name or len(name.strip()) < rules.get("name_min_length", 3):
-            result.errors.append(f"Name muss mindestens {rules.get('name_min_length')} Zeichen haben")
+            result.errors.append(
+                f"Name muss mindestens {rules.get('name_min_length')} Zeichen haben"
+            )
 
         if not content or len(content.strip()) < rules.get("content_min_length", 20):
-            result.errors.append(f"Content muss mindestens {rules.get('content_min_length')} Zeichen haben")
+            result.errors.append(
+                f"Content muss mindestens {rules.get('content_min_length')} Zeichen haben"
+            )
 
         if not description or len(description.strip()) < rules.get("description_min_length", 10):
-            result.warnings.append(f"Beschreibung sollte mindestens {rules.get('description_min_length')} Zeichen haben")
+            result.warnings.append(
+                f"Beschreibung sollte mindestens {rules.get('description_min_length')} Zeichen haben"
+            )
 
     def _validate_naming_conventions(self, result: ValidationResult, name: str):
         """Validiert Namenskonventionen."""
@@ -693,14 +788,14 @@ class DataGovernanceEngine:
             return
 
         # Keine Sonderzeichen außer Leerzeichen, Bindestriche
-        if not re.match(r'^[a-zA-Z0-9\s\-\.]+$', name):
+        if not re.match(r"^[a-zA-Z0-9\s\-\.]+$", name):
             result.errors.append("Name enthält ungültige Zeichen")
-        
+
         # Keine generischen Namen
-        generic_names = ['test', 'note', 'example', 'temp', 'new']
+        generic_names = ["test", "note", "example", "temp", "new"]
         if name.lower().strip() in generic_names:
             result.warnings.append(f"Generischer Name '{name}' - bitte spezifischer")
-    
+
     def _validate_content_quality(self, result: ValidationResult, content: str):
         """Validiert Content-Qualität."""
         # Prüfe auf None oder leeren Content
@@ -710,24 +805,25 @@ class DataGovernanceEngine:
 
         if len(content) < 100:
             result.warnings.append("Content ist sehr kurz - mehr Details empfohlen")
-        
+
         # Prüfe auf Markdown-Struktur
-        if not any(marker in content for marker in ['#', '**', '*', '-', '1.']):
+        if not any(marker in content for marker in ["#", "**", "*", "-", "1."]):
             result.suggestions.append("Strukturierung mit Markdown empfohlen")
-        
+
         # Prüfe auf Code-Blöcke bei Code-Content
-        if 'def ' in content or 'class ' in content or 'import ' in content:
-            if '```' not in content:
+        if "def " in content or "class " in content or "import " in content:
+            if "```" not in content:
                 result.warnings.append("Code sollte in Markdown-Code-Blöcken (```) stehen")
-    
-    def _validate_template_compliance(self, result: ValidationResult, 
-                                    content: str, template: str, template_rules: dict):
+
+    def _validate_template_compliance(
+        self, result: ValidationResult, content: str, template: str, template_rules: dict
+    ):
         """Validiert Template-Konformität."""
         # Verwende get_templates() statt self.templates
         templates = self.get_templates()
         if template in templates:
             # Prüfe required sections
-            for section in template_rules['required_sections']:
+            for section in template_rules["required_sections"]:
                 if section.lower() not in content.lower():
                     result.warnings.append(f"Template-Sektion '{section}' fehlt")
 
@@ -736,7 +832,9 @@ class DataGovernanceEngine:
             if len(content) < min_length:
                 result.warnings.append(f"Content sollte mindestens {min_length} Zeichen lang sein")
 
-            required_keywords = template_rules.get("content_standards", {}).get("required_keywords", [])
+            required_keywords = template_rules.get("content_standards", {}).get(
+                "required_keywords", []
+            )
             for keyword in required_keywords:
                 if keyword.lower() not in content.lower():
                     result.errors.append(f"Keyword '{keyword}' fehlt im Content")
@@ -744,17 +842,19 @@ class DataGovernanceEngine:
     def _suggest_template(self, content: str, note_type: str) -> Optional[str]:
         """Schlägt Template basierend auf Content vor."""
         content_lower = content.lower()
-        
-        if 'framework' in content_lower and 'python' in content_lower:
-            return 'Python Framework'
-        elif 'geschichte' in content_lower or 'entwicklung' in content_lower:
-            return 'Programmiersprache-Geschichte'
-        elif note_type == 'framework':
-            return 'Python Framework'
-        
+
+        if "framework" in content_lower and "python" in content_lower:
+            return "Python Framework"
+        elif "geschichte" in content_lower or "entwicklung" in content_lower:
+            return "Programmiersprache-Geschichte"
+        elif note_type == "framework":
+            return "Python Framework"
+
         return None
-    
-    def _suggest_template_dynamic(self, content: str, note_type: str, templates: dict) -> Optional[str]:
+
+    def _suggest_template_dynamic(
+        self, content: str, note_type: str, templates: dict
+    ) -> Optional[str]:
         """Schlägt Template basierend auf dynamischer Analyse vor."""
         # Prüfe auf None-Content
         if content is None:
@@ -772,19 +872,23 @@ class DataGovernanceEngine:
     def _suggest_workflow_step(self, content: str, note_type: str) -> Optional[str]:
         """Schlägt Workflow-Step vor."""
         content_lower = content.lower()
-        
-        if any(word in content_lower for word in ['django', 'flask', 'fastapi']):
-            return 'Frameworks'
-        elif any(word in content_lower for word in ['pytest', 'testing', 'test']):
-            return 'Testing & Automation'
-        elif any(word in content_lower for word in ['tensorflow', 'pytorch', 'ml', 'machine learning']):
-            return 'Machine Learning'
-        elif any(word in content_lower for word in ['python', 'guido', 'geschichte']):
-            return 'Grundlagen'
-        
+
+        if any(word in content_lower for word in ["django", "flask", "fastapi"]):
+            return "Frameworks"
+        elif any(word in content_lower for word in ["pytest", "testing", "test"]):
+            return "Testing & Automation"
+        elif any(
+            word in content_lower for word in ["tensorflow", "pytorch", "ml", "machine learning"]
+        ):
+            return "Machine Learning"
+        elif any(word in content_lower for word in ["python", "guido", "geschichte"]):
+            return "Grundlagen"
+
         return None
-    
-    def _suggest_workflow_step_dynamic(self, content: str, note_type: str, workflows: dict) -> Optional[str]:
+
+    def _suggest_workflow_step_dynamic(
+        self, content: str, note_type: str, workflows: dict
+    ) -> Optional[str]:
         """Schlägt Workflow-Step basierend auf dynamischer Analyse vor."""
         # Null-Prüfung hinzufügen
         if content is None:
@@ -803,39 +907,41 @@ class DataGovernanceEngine:
         """Schlägt Tags basierend auf Content-Analyse vor."""
         tags = set()
         content_lower = content.lower()
-        
+
         # Basis-Tags
-        if 'python' in content_lower:
-            tags.add('python')
-        
+        if "python" in content_lower:
+            tags.add("python")
+
         # Framework-Tags
-        if any(fw in content_lower for fw in ['django', 'flask', 'fastapi']):
-            tags.add('framework')
-            tags.add('web-entwicklung')
-        
+        if any(fw in content_lower for fw in ["django", "flask", "fastapi"]):
+            tags.add("framework")
+            tags.add("web-entwicklung")
+
         # Testing-Tags
-        if any(test in content_lower for test in ['test', 'pytest', 'automation']):
-            tags.add('testing')
-            tags.add('automation')
-        
+        if any(test in content_lower for test in ["test", "pytest", "automation"]):
+            tags.add("testing")
+            tags.add("automation")
+
         # ML-Tags
-        if any(ml in content_lower for ml in ['tensorflow', 'pytorch', 'machine learning', 'ml']):
-            tags.add('machine-learning')
-            tags.add('data-science')
-        
+        if any(ml in content_lower for ml in ["tensorflow", "pytorch", "machine learning", "ml"]):
+            tags.add("machine-learning")
+            tags.add("data-science")
+
         # Type-based Tags
         if note_type:
             tags.add(note_type)
-        
+
         # Template-based Tags
-        if template == 'Python Framework':
-            tags.add('framework')
-        elif template == 'Programmiersprache-Geschichte':
-            tags.add('geschichte')
-        
+        if template == "Python Framework":
+            tags.add("framework")
+        elif template == "Programmiersprache-Geschichte":
+            tags.add("geschichte")
+
         return list(tags)
-    
-    def _suggest_tags_dynamic(self, content: str, note_type: str, template: str, templates: dict) -> List[str]:
+
+    def _suggest_tags_dynamic(
+        self, content: str, note_type: str, template: str, templates: dict
+    ) -> List[str]:
         """Schlägt Tags basierend auf dynamischer Analyse vor."""
         tags = set()
 
@@ -861,18 +967,21 @@ class DataGovernanceEngine:
         """Prüft auf potentielle Duplikate (vereinfacht)."""
         # Simuliere existierende Notes
         existing_notes = [
-            'Python Geschichte', 'Django Framework', 'PyTest Framework',
-            'Guido van Rossum', 'Python Taschenrechner Beispiel'
+            "Python Geschichte",
+            "Django Framework",
+            "PyTest Framework",
+            "Guido van Rossum",
+            "Python Taschenrechner Beispiel",
         ]
-        
+
         name_lower = name.lower()
         for existing in existing_notes:
             existing_lower = existing.lower()
-            
+
             # Prüfe auf hohe Wort-Überlappung
             name_words = set(name_lower.split())
             existing_words = set(existing_lower.split())
-            
+
             if name_words and existing_words:
                 intersection = name_words.intersection(existing_words)
                 if len(intersection) >= 2:  # Mindestens 2 gemeinsame Wörter
@@ -887,11 +996,14 @@ class DataGovernanceEngine:
 
         try:
             with self.driver.session() as session:
-                result = session.run("""
+                result = session.run(
+                    """
                     MATCH (n:Note)
                     WHERE n.name <> $name
                     RETURN n.name as existing_name
-                """, name=name)
+                """,
+                    name=name,
+                )
 
                 existing_notes = [record["existing_name"] for record in result]
 
@@ -924,8 +1036,11 @@ class DataGovernanceEngine:
 
         # Simuliere existierende Notes
         existing_notes = [
-            'Python Geschichte', 'Django Framework', 'PyTest Framework',
-            'Guido van Rossum', 'Python Taschenrechner Beispiel'
+            "Python Geschichte",
+            "Django Framework",
+            "PyTest Framework",
+            "Guido van Rossum",
+            "Python Taschenrechner Beispiel",
         ]
 
         name_lower = name.lower()
@@ -952,10 +1067,12 @@ class DataGovernanceEngine:
 
         try:
             with self.driver.session() as session:
-                result = session.run("""
+                result = session.run(
+                    """
                     MATCH (r:ValidationRule)
                     RETURN r.rule_name as rule_name, r.value as value, r.type as value_type
-                """)
+                """
+                )
 
                 neo4j_rules = {}
                 for record in result:
@@ -998,62 +1115,66 @@ class DataGovernanceEngine:
                     else:
                         value_type = "string"
 
-                    session.run("""
+                    session.run(
+                        """
                         MERGE (r:ValidationRule {rule_name: $rule_name})
                         SET r.value = $value,
                             r.type = $value_type,
                             r.updated_at = timestamp()
-                    """, rule_name=rule_name, value=str(value), value_type=value_type)
+                    """,
+                        rule_name=rule_name,
+                        value=str(value),
+                        value_type=value_type,
+                    )
 
         except Exception as e:
             print(f"⚠️ Fehler beim Speichern der Validierungsregeln in Neo4j: {e}")
+
 
 def print_validation_result(result: ValidationResult, note_name: str):
     """Gibt Validierungsergebnis formatiert aus."""
     print(f"🔍 Validierung für Note: '{note_name}'")
     print("=" * 50)
-    
+
     if result.errors:
         print("❌ Fehler:")
         for error in result.errors:
             print(f"   • {error}")
-    
+
     if result.warnings:
         print("⚠️  Warnungen:")
         for warning in result.warnings:
             print(f"   • {warning}")
-    
+
     if result.suggestions:
         print("💡 Empfehlungen:")
         for suggestion in result.suggestions:
             print(f"   • {suggestion}")
-    
+
     if not result.errors and not result.warnings and not result.suggestions:
         print("✅ Perfekt - keine Probleme gefunden!")
-    
+
     print()
     return result.passed
+
 
 if __name__ == "__main__":
     # Test der Data Governance
     governance = DataGovernanceEngine()
-    
+
     # Test 1: Gute Note
     print("🧪 Test 1: Gute Note")
     result = governance.validate_note_creation(
         name="FastAPI Framework",
         content="FastAPI ist ein modernes, schnelles Web-Framework für Python APIs. **Hauptmerkmale:** Hohe Performance, automatische API-Dokumentation. **Verwendung:** Wird von Microsoft und Uber verwendet. **Status:** Sehr beliebt in 2025.",
         description="Hochperformantes Python API-Framework",
-        note_type="framework"
+        note_type="framework",
     )
     print_validation_result(result, "FastAPI Framework")
-    
+
     # Test 2: Problematische Note
     print("🧪 Test 2: Problematische Note")
     result = governance.validate_note_creation(
-        name="test",
-        content="kurz",
-        description="",
-        note_type=""
+        name="test", content="kurz", description="", note_type=""
     )
     print_validation_result(result, "test")

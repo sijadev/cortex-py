@@ -3,7 +3,7 @@
 Test the imports directly for the MCP server
 """
 
-# Test if MCP imports work when run directly 
+# Test if MCP imports work when run directly
 try:
     from mcp.server import Server
     from mcp.server.models import InitializationOptions
@@ -16,6 +16,7 @@ try:
         EmbeddedResource,
         ServerCapabilities,
     )
+
     print("✅ All MCP imports successful when run directly!")
     MCP_AVAILABLE = True
 except ImportError as e:

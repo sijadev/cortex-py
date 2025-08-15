@@ -17,6 +17,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class SafeTransactionManager:
     """
     Manages safe transactions with automatic backup and rollback capabilities
@@ -31,6 +32,7 @@ class SafeTransactionManager:
         """
         Decorator for safe transaction handling with auto-backup
         """
+
         def decorator(func):
             @wraps(func)
             def wrapper(*args, **kwargs):
@@ -55,13 +57,19 @@ class SafeTransactionManager:
                         except Exception as e:
                             # Automatic rollback
                             tx.rollback()
-                            logger.error(f"❌ Transaction rolled back due to error in {operation_name}: {e}")
+                            logger.error(
+                                f"❌ Transaction rolled back due to error in {operation_name}: {e}"
+                            )
 
                             # Offer to restore from backup
-                            print(f"⚠️  Operation '{operation_name}' failed. Backup available: {backup_file}")
+                            print(
+                                f"⚠️  Operation '{operation_name}' failed. Backup available: {backup_file}"
+                            )
 
                             raise e
+
             return wrapper
+
         return decorator
 
     def _create_backup(self, operation_suffix=""):
@@ -74,7 +82,8 @@ class SafeTransactionManager:
             # Export current database structure
             with self.driver.session() as session:
                 # Get all nodes and relationships
-                result = session.run("""
+                result = session.run(
+                    """
                     MATCH (n)
                     OPTIONAL MATCH (n)-[r]->(m)
                     RETURN 
@@ -89,18 +98,19 @@ class SafeTransactionManager:
                             type: type(r),
                             properties: properties(r)
                         }) as relationships
-                """)
+                """
+                )
 
                 data = result.single()
                 backup_data = {
-                    'timestamp': timestamp,
-                    'operation': operation_suffix,
-                    'nodes': data['nodes'] if data['nodes'][0] else [],
-                    'relationships': data['relationships'] if data['relationships'][0] else []
+                    "timestamp": timestamp,
+                    "operation": operation_suffix,
+                    "nodes": data["nodes"] if data["nodes"][0] else [],
+                    "relationships": data["relationships"] if data["relationships"][0] else [],
                 }
 
                 # Save backup
-                with open(backup_path, 'w', encoding='utf-8') as f:
+                with open(backup_path, "w", encoding="utf-8") as f:
                     yaml.dump(backup_data, f, default_flow_style=False, allow_unicode=True)
 
                 logger.info(f"🔄 Backup created: {backup_path}")
@@ -118,14 +128,14 @@ class SafeTransactionManager:
         """Remove old backup files, keeping only the most recent ones"""
         try:
             backup_files = [
-                f for f in os.listdir(self.backup_dir)
+                f
+                for f in os.listdir(self.backup_dir)
                 if f.startswith("auto-backup-") and f.endswith(".yaml")
             ]
 
             # Sort by modification time (newest first)
             backup_files.sort(
-                key=lambda x: os.path.getmtime(os.path.join(self.backup_dir, x)),
-                reverse=True
+                key=lambda x: os.path.getmtime(os.path.join(self.backup_dir, x)), reverse=True
             )
 
             # Remove files beyond keep_count
@@ -135,6 +145,7 @@ class SafeTransactionManager:
 
         except Exception as e:
             logger.error(f"⚠️ Backup cleanup failed: {e}")
+
 
 class DataIntegrityValidator:
     """
@@ -149,7 +160,8 @@ class DataIntegrityValidator:
     def get_current_stats(self):
         """Get current database statistics"""
         with self.driver.session() as session:
-            result = session.run("""
+            result = session.run(
+                """
                 MATCH (n:Note) 
                 OPTIONAL MATCH (t:Tag)
                 OPTIONAL MATCH (w:Workflow)
@@ -162,16 +174,17 @@ class DataIntegrityValidator:
                     count(r) as note_links,
                     count(r2) as workflow_links,
                     timestamp() as check_time
-            """).single()
+            """
+            ).single()
 
             return {
-                'notes': result['notes'],
-                'tags': result['tags'],
-                'workflows': result['workflows'],
-                'note_links': result['note_links'],
-                'workflow_links': result['workflow_links'],
-                'check_time': result['check_time'],
-                'timestamp': datetime.now().isoformat()
+                "notes": result["notes"],
+                "tags": result["tags"],
+                "workflows": result["workflows"],
+                "note_links": result["note_links"],
+                "workflow_links": result["workflow_links"],
+                "check_time": result["check_time"],
+                "timestamp": datetime.now().isoformat(),
             }
 
     def validate_integrity(self, alert_threshold=5):
@@ -184,15 +197,15 @@ class DataIntegrityValidator:
 
             # Load baseline if exists
             if os.path.exists(self.baseline_file):
-                with open(self.baseline_file, 'r') as f:
+                with open(self.baseline_file, "r") as f:
                     baseline = json.load(f)
 
                 # Check for critical data loss
-                note_diff = current_stats['notes'] - baseline['notes']
-                workflow_diff = current_stats['workflows'] - baseline['workflows']
+                note_diff = current_stats["notes"] - baseline["notes"]
+                workflow_diff = current_stats["workflows"] - baseline["workflows"]
 
                 # Critical alerts
-                if current_stats['notes'] == 0 and baseline['notes'] > 0:
+                if current_stats["notes"] == 0 and baseline["notes"] > 0:
                     print("🚨 KRITISCHER DATENVERLUST: Alle Notes verschwunden!")
                     return False
 
@@ -204,10 +217,12 @@ class DataIntegrityValidator:
                     print(f"⚠️ WARNUNG: {abs(workflow_diff)} Workflows verloren!")
 
             # Update baseline
-            with open(self.baseline_file, 'w') as f:
+            with open(self.baseline_file, "w") as f:
                 json.dump(current_stats, f, indent=2)
 
-            print(f"📊 Datenbestand: {current_stats['notes']} Notes, {current_stats['workflows']} Workflows, {current_stats['tags']} Tags")
+            print(
+                f"📊 Datenbestand: {current_stats['notes']} Notes, {current_stats['workflows']} Workflows, {current_stats['tags']} Tags"
+            )
             return True
 
         except Exception as e:
@@ -218,14 +233,14 @@ class DataIntegrityValidator:
         """Check if emergency restore is needed and suggest actions"""
         current_stats = self.get_current_stats()
 
-        if current_stats['notes'] == 0:
+        if current_stats["notes"] == 0:
             print("🚨 NOTFALL: Keine Notes gefunden!")
             print("💡 Verfügbare Wiederherstellungsoptionen:")
 
             # List available backups
             backup_dir = "backups/auto"
             if os.path.exists(backup_dir):
-                backups = [f for f in os.listdir(backup_dir) if f.endswith('.yaml')]
+                backups = [f for f in os.listdir(backup_dir) if f.endswith(".yaml")]
                 backups.sort(reverse=True)  # Newest first
 
                 print(f"   📁 {len(backups)} automatische Backups verfügbar")

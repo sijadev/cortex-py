@@ -9,13 +9,18 @@ from pathlib import Path
 import pytest
 
 # Ensure project root is in Python path
-project_root = Path(__file__).resolve().parent.parent.parent  # Go up two levels now (mcp -> tests -> project)
+project_root = (
+    Path(__file__).resolve().parent.parent.parent
+)  # Go up two levels now (mcp -> tests -> project)
 sys.path.insert(0, str(project_root))
+
 
 def test_list_workflows():
     """Test ob list-workflows Befehl funktioniert."""
     # Bevorzugt das venv-Python, fällt auf aktuelles Python zurück
-    repo_root = Path(__file__).resolve().parent.parent.parent  # Go up two levels now (mcp -> tests -> project)
+    repo_root = (
+        Path(__file__).resolve().parent.parent.parent
+    )  # Go up two levels now (mcp -> tests -> project)
     venv_python = repo_root / ".venv" / "bin" / "python"
     python_exec = str(venv_python) if venv_python.exists() else sys.executable
 
@@ -25,23 +30,35 @@ def test_list_workflows():
     env.setdefault("NEO4J_PASSWORD", "neo4jtest")
 
     # Teste zuerst die Verbindung
-    connection_test = subprocess.run([
-        python_exec, "cortex_neo/cortex_cli.py", "validate-connection"
-    ], capture_output=True, text=True, env=env, cwd=repo_root)
+    connection_test = subprocess.run(
+        [python_exec, "cortex_neo/cortex_cli.py", "validate-connection"],
+        capture_output=True,
+        text=True,
+        env=env,
+        cwd=repo_root,
+    )
 
     if connection_test.returncode != 0:
         print("⚠️  Neo4j-Verbindung nicht verfügbar, überspringe Test")
         pytest.skip("Neo4j-Verbindung nicht verfügbar")
 
     # Erstelle einen Test-Workflow
-    create_result = subprocess.run([
-        python_exec, "cortex_neo/cortex_cli.py", "create-workflow", "TestWorkflow"
-    ], capture_output=True, text=True, env=env, cwd=repo_root)
+    create_result = subprocess.run(
+        [python_exec, "cortex_neo/cortex_cli.py", "create-workflow", "TestWorkflow"],
+        capture_output=True,
+        text=True,
+        env=env,
+        cwd=repo_root,
+    )
 
     # Liste Workflows auf
-    result = subprocess.run([
-        python_exec, "cortex_neo/cortex_cli.py", "list-workflows"
-    ], capture_output=True, text=True, env=env, cwd=repo_root)
+    result = subprocess.run(
+        [python_exec, "cortex_neo/cortex_cli.py", "list-workflows"],
+        capture_output=True,
+        text=True,
+        env=env,
+        cwd=repo_root,
+    )
 
     assert result.returncode == 0, f"list-workflows Befehl fehlgeschlagen: {result.stderr}"
 
@@ -63,12 +80,17 @@ def test_list_workflows():
         print(f"   Ausgabe: {result.stdout.strip()}")
 
     # Bereinigung: Lösche Test-Workflow
-    cleanup_result = subprocess.run([
-        python_exec, "cortex_neo/cortex_cli.py", "delete-workflow", "TestWorkflow"
-    ], capture_output=True, text=True, env=env, cwd=repo_root)
+    cleanup_result = subprocess.run(
+        [python_exec, "cortex_neo/cortex_cli.py", "delete-workflow", "TestWorkflow"],
+        capture_output=True,
+        text=True,
+        env=env,
+        cwd=repo_root,
+    )
 
     # Test completed successfully
     assert True
+
 
 if __name__ == "__main__":
     test_list_workflows()

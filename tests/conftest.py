@@ -2,6 +2,7 @@
 Global pytest configuration for cortex-py project.
 Ensures proper Python path setup for all tests.
 """
+
 import sys
 from pathlib import Path
 

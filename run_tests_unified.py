@@ -20,6 +20,7 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root / "src"))
 sys.path.insert(0, str(project_root))
 
+
 def cleanup_old_reports():
     """Löscht alte Test-Reports um Konflikte zu vermeiden"""
     reports_dir = project_root / "tests" / "reports"
@@ -30,6 +31,7 @@ def cleanup_old_reports():
                 print(f"🗑️  Alte Report-Datei gelöscht: {file.name}")
             except Exception as e:
                 print(f"⚠️  Konnte {file.name} nicht löschen: {e}")
+
 
 def setup_environment():
     """Bereitet die Test-Umgebung vor"""
@@ -50,6 +52,7 @@ def setup_environment():
 
     print("✅ Test-Umgebung vorbereitet")
 
+
 def run_tests_with_single_report():
     """Führt alle Tests aus und generiert EINEN einzigen HTML-Report"""
     print("🧪 Starte Test-Suite (Unified Runner)...")
@@ -61,22 +64,33 @@ def run_tests_with_single_report():
 
     print(f"📊 HTML-Report wird erstellt: {report_path.name}")
 
+    # Check if running in CI environment
+    is_ci = os.environ.get("CI", "").lower() in ("true", "1", "yes")
+
     # Pytest Kommando - NUR EIN Report!
     pytest_cmd = [
-        "python", "-m", "pytest",
+        "python",
+        "-m",
+        "pytest",
         "tests/",  # Explizit nur tests/ Verzeichnis
-        "--html", str(report_path),
-        "--self-contained-html",
         "--verbose",
         "--tb=short",
         "--durations=10",
         "--cov=src",
-        "--cov-report=html:tests/reports/coverage",
         "--maxfail=5",  # Stop nach 5 Fehlern
-        "--disable-warnings"
+        "--disable-warnings",
     ]
 
+    # Only add HTML report in non-CI environments to avoid browser issues
+    if not is_ci:
+        pytest_cmd.extend(["--html", str(report_path), "--self-contained-html"])
+
+    # Add coverage reports
+    pytest_cmd.extend(["--cov-report=html:tests/reports/coverage", "--cov-report=xml"])
+
     print(f"🚀 Führe Tests aus: {' '.join(pytest_cmd[2:])}")
+    if is_ci:
+        print("🤖 CI-Umgebung erkannt - HTML-Report wird übersprungen")
     print("-" * 60)
 
     try:
@@ -86,7 +100,7 @@ def run_tests_with_single_report():
             cwd=project_root,
             capture_output=True,
             text=True,
-            timeout=300  # 5 Minuten Timeout
+            timeout=300,  # 5 Minuten Timeout
         )
 
         print(f"\n📋 Test-Ergebnis:")
@@ -100,8 +114,8 @@ def run_tests_with_single_report():
             print("⚠️  Standard Error:")
             print(result.stderr[-500:])  # Zeige letzten 500 Zeichen
 
-        # Prüfe ob HTML-Report erstellt wurde
-        if report_path.exists():
+        # Prüfe ob HTML-Report erstellt wurde (nur wenn nicht CI)
+        if not is_ci and report_path.exists():
             print(f"\n✅ HTML-Report erfolgreich erstellt: {report_path}")
 
             # Öffne Report automatisch im Browser
@@ -111,7 +125,9 @@ def run_tests_with_single_report():
             except Exception as e:
                 print(f"⚠️  Konnte Report nicht automatisch öffnen: {e}")
                 print(f"💡 Öffnen Sie manuell: file://{report_path.absolute()}")
-        else:
+        elif is_ci:
+            print("✅ Tests in CI-Umgebung abgeschlossen (ohne HTML-Report)")
+        elif not report_path.exists() and not is_ci:
             print("❌ HTML-Report wurde nicht erstellt")
 
         return result.returncode == 0
@@ -122,6 +138,7 @@ def run_tests_with_single_report():
     except Exception as e:
         print(f"❌ Fehler bei Test-Ausführung: {e}")
         return False
+
 
 def print_summary():
     """Zeigt eine Zusammenfassung"""
@@ -142,6 +159,7 @@ def print_summary():
                 print(f"   - {report.name}")
         else:
             print("❌ Kein HTML-Report gefunden")
+
 
 def main():
     """Hauptfunktion des Unified Test Runners"""
@@ -166,6 +184,7 @@ def main():
     else:
         print("\n❌ Tests mit Fehlern beendet")
         return 1
+
 
 if __name__ == "__main__":
     exit_code = main()

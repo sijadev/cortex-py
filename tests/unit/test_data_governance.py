@@ -12,14 +12,16 @@ from unittest.mock import Mock, patch, MagicMock
 from dataclasses import asdict
 
 import sys
-sys.path.append('/Users/simonjanke/Projects/cortex-py/src')
+
+sys.path.append("/Users/simonjanke/Projects/cortex-py/src")
 
 from src.governance.data_governance import (
     DataGovernanceEngine,
     ValidationResult,
     Neo4jTemplateManager,
-    ValidationLevel
+    ValidationLevel,
 )
+
 
 class TestDataGovernanceEngine:
     """Tests für die grundlegende DataGovernanceEngine"""
@@ -33,33 +35,31 @@ class TestDataGovernanceEngine:
     def sample_config_file(self):
         """Erstellt temporäre Konfigurationsdatei für Tests"""
         config_data = {
-            'templates': {
-                'test_template': {
-                    'required_sections': ['overview', 'details'],
-                    'suggested_tags': ['test', 'sample'],
-                    'workflow_step': 'testing',
-                    'content_standards': {
-                        'min_length': 50,
-                        'required_keywords': ['test']
-                    }
+            "templates": {
+                "test_template": {
+                    "required_sections": ["overview", "details"],
+                    "suggested_tags": ["test", "sample"],
+                    "workflow_step": "testing",
+                    "content_standards": {"min_length": 50, "required_keywords": ["test"]},
                 }
             },
-            'workflows': {
-                'test_workflow': {
-                    'steps': ['start', 'middle', 'end'],
-                    'templates': ['test_template'],
-                    'auto_assign': True
+            "workflows": {
+                "test_workflow": {
+                    "steps": ["start", "middle", "end"],
+                    "templates": ["test_template"],
+                    "auto_assign": True,
                 }
             },
-            'validation_rules': {
-                'name_min_length': 5,
-                'content_min_length': 30,
-                'auto_suggest_templates': True
-            }
+            "validation_rules": {
+                "name_min_length": 5,
+                "content_min_length": 30,
+                "auto_suggest_templates": True,
+            },
         }
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             import yaml
+
             yaml.dump(config_data, f)
             yield f.name
 
@@ -68,19 +68,19 @@ class TestDataGovernanceEngine:
     def test_engine_initialization(self, governance_engine):
         """Test der Engine-Initialisierung"""
         assert governance_engine is not None
-        assert hasattr(governance_engine, 'config')
-        assert hasattr(governance_engine, 'neo4j_manager')
-        assert 'templates' in governance_engine.config
-        assert 'workflows' in governance_engine.config
-        assert 'validation_rules' in governance_engine.config
+        assert hasattr(governance_engine, "config")
+        assert hasattr(governance_engine, "neo4j_manager")
+        assert "templates" in governance_engine.config
+        assert "workflows" in governance_engine.config
+        assert "validation_rules" in governance_engine.config
 
     def test_load_external_config(self, sample_config_file):
         """Test des Ladens externer Konfiguration"""
         governance = DataGovernanceEngine(sample_config_file)
 
-        assert 'test_template' in governance.config['templates']
-        assert 'test_workflow' in governance.config['workflows']
-        assert governance.config['validation_rules']['name_min_length'] == 5
+        assert "test_template" in governance.config["templates"]
+        assert "test_workflow" in governance.config["workflows"]
+        assert governance.config["validation_rules"]["name_min_length"] == 5
 
     def test_get_templates(self, governance_engine):
         """Test des Template-Abrufs"""
@@ -90,15 +90,15 @@ class TestDataGovernanceEngine:
         assert len(templates) > 0
 
         # Prüfe Standard-Templates
-        assert 'Python Framework' in templates
-        assert 'Programmiersprache-Geschichte' in templates
+        assert "Python Framework" in templates
+        assert "Programmiersprache-Geschichte" in templates
 
         # Prüfe Template-Struktur
-        template = templates['Python Framework']
-        assert 'required_sections' in template
-        assert 'suggested_tags' in template
-        assert 'workflow_step' in template
-        assert 'content_standards' in template
+        template = templates["Python Framework"]
+        assert "required_sections" in template
+        assert "suggested_tags" in template
+        assert "workflow_step" in template
+        assert "content_standards" in template
 
     def test_get_workflows(self, governance_engine):
         """Test des Workflow-Abrufs"""
@@ -108,12 +108,12 @@ class TestDataGovernanceEngine:
         assert len(workflows) > 0
 
         # Prüfe Standard-Workflow
-        assert 'Python Knowledge Base' in workflows
+        assert "Python Knowledge Base" in workflows
 
-        workflow = workflows['Python Knowledge Base']
-        assert 'steps' in workflow
-        assert 'templates' in workflow
-        assert 'auto_assign' in workflow
+        workflow = workflows["Python Knowledge Base"]
+        assert "steps" in workflow
+        assert "templates" in workflow
+        assert "auto_assign" in workflow
 
     def test_add_template(self, governance_engine):
         """Test des Hinzufügens von Templates"""
@@ -124,7 +124,7 @@ class TestDataGovernanceEngine:
             required_sections=["intro", "body", "conclusion"],
             suggested_tags=["test", "example"],
             workflow_step="testing",
-            content_standards={"min_length": 100}
+            content_standards={"min_length": 100},
         )
 
         templates = governance_engine.get_templates()
@@ -132,9 +132,9 @@ class TestDataGovernanceEngine:
         assert "Test Template" in templates
 
         new_template = templates["Test Template"]
-        assert new_template['required_sections'] == ["intro", "body", "conclusion"]
-        assert new_template['suggested_tags'] == ["test", "example"]
-        assert new_template['workflow_step'] == "testing"
+        assert new_template["required_sections"] == ["intro", "body", "conclusion"]
+        assert new_template["suggested_tags"] == ["test", "example"]
+        assert new_template["workflow_step"] == "testing"
 
     def test_add_workflow(self, governance_engine):
         """Test des Hinzufügens von Workflows"""
@@ -144,7 +144,7 @@ class TestDataGovernanceEngine:
             name="Test Workflow",
             steps=["start", "process", "end"],
             templates=["Test Template"],
-            auto_assign=False
+            auto_assign=False,
         )
 
         workflows = governance_engine.get_workflows()
@@ -152,9 +152,10 @@ class TestDataGovernanceEngine:
         assert "Test Workflow" in workflows
 
         new_workflow = workflows["Test Workflow"]
-        assert new_workflow['steps'] == ["start", "process", "end"]
-        assert new_workflow['templates'] == ["Test Template"]
-        assert new_workflow['auto_assign'] == False
+        assert new_workflow["steps"] == ["start", "process", "end"]
+        assert new_workflow["templates"] == ["Test Template"]
+        assert new_workflow["auto_assign"] == False
+
 
 class TestValidation:
     """Tests für Validierungsfunktionen"""
@@ -169,7 +170,7 @@ class TestValidation:
             name="FastAPI Framework Test",
             content="FastAPI ist ein modernes Web-Framework für Python. Es bietet hohe Performance und automatische API-Dokumentation. **Hauptmerkmale:** Schnell, einfach zu verwenden. **Verwendung:** API-Entwicklung. **Status:** Sehr beliebt.",
             description="Test für FastAPI Framework",
-            note_type="framework"
+            note_type="framework",
         )
 
         assert isinstance(result, ValidationResult)
@@ -179,10 +180,7 @@ class TestValidation:
     def test_validate_bad_note(self, governance_engine):
         """Test einer problematischen Note-Validierung"""
         result = governance_engine.validate_note_creation(
-            name="x",  # Zu kurz
-            content="kurz",  # Zu kurz
-            description="",  # Leer
-            note_type=""
+            name="x", content="kurz", description="", note_type=""  # Zu kurz  # Zu kurz  # Leer
         )
 
         assert isinstance(result, ValidationResult)
@@ -196,7 +194,7 @@ class TestValidation:
             content="Dies ist ein Test-Framework für Python. **Hauptmerkmale:** Einfach zu verwenden. **Verwendung:** Für Unit-Tests. **Status:** Stable. Es enthält python und ist ein framework.",
             description="Test Framework Beschreibung",
             note_type="framework",
-            template="Python Framework"
+            template="Python Framework",
         )
 
         assert isinstance(result, ValidationResult)
@@ -205,15 +203,17 @@ class TestValidation:
 
     def test_extract_keywords_from_content(self, governance_engine):
         """Test der Keyword-Extraktion"""
-        content = "Dies ist ein Python API mit machine learning und database integration für development"
+        content = (
+            "Dies ist ein Python API mit machine learning und database integration für development"
+        )
         keywords = governance_engine._extract_keywords_from_content(content)
 
         assert isinstance(keywords, list)
-        assert 'python' in keywords
-        assert 'api' in keywords
-        assert 'ml' in keywords or 'machine learning' in content.lower()
-        assert 'database' in keywords
-        assert 'development' in keywords
+        assert "python" in keywords
+        assert "api" in keywords
+        assert "ml" in keywords or "machine learning" in content.lower()
+        assert "database" in keywords
+        assert "development" in keywords
 
     def test_naming_conventions(self, governance_engine):
         """Test der Namenskonventionen"""
@@ -222,7 +222,7 @@ class TestValidation:
             name="Valid Framework Name",
             content="Content mit mindestens zwanzig Zeichen für die Validierung",
             description="Gültige Beschreibung",
-            note_type="test"
+            note_type="test",
         )
 
         naming_errors = [e for e in result.errors if "Name enthält" in e]
@@ -233,11 +233,12 @@ class TestValidation:
             name="Invalid@Name!",
             content="Content mit mindestens zwanzig Zeichen für die Validierung",
             description="Beschreibung",
-            note_type="test"
+            note_type="test",
         )
 
         naming_errors = [e for e in result.errors if "Name enthält" in e]
         assert len(naming_errors) > 0
+
 
 class TestContextValidation:
     """Tests für die neue Context-basierte Validierung"""
@@ -254,7 +255,7 @@ class TestContextValidation:
             description="AI Research Description",
             project_type="research",
             project_name="AI Study",
-            keywords=["ai", "machine learning", "research"]
+            keywords=["ai", "machine learning", "research"],
         )
 
         assert isinstance(result, ValidationResult)
@@ -264,13 +265,12 @@ class TestContextValidation:
         """Test der Context-basierten Template-Auswahl"""
         # Test ohne Neo4j (sollte Fallback verwenden)
         templates = governance_engine.get_templates_for_context(
-            project_type="research",
-            project_name="Test Project",
-            keywords=["python", "framework"]
+            project_type="research", project_name="Test Project", keywords=["python", "framework"]
         )
 
         assert isinstance(templates, dict)
         assert len(templates) > 0
+
 
 class TestNeo4jTemplateManager:
     """Tests für den Neo4j Template Manager"""
@@ -278,7 +278,7 @@ class TestNeo4jTemplateManager:
     @pytest.fixture
     def mock_neo4j_manager(self):
         """Erstellt einen Mock Manager ohne Verbindung"""
-        with patch('src.governance.data_governance.NEO4J_AVAILABLE', False):
+        with patch("src.governance.data_governance.NEO4J_AVAILABLE", False):
             manager = Neo4jTemplateManager()
             manager.driver = None  # Simuliere keine Verbindung
             # Mock _connect to always return False
@@ -288,7 +288,7 @@ class TestNeo4jTemplateManager:
     @pytest.fixture
     def connected_mock_manager(self):
         """Erstellt einen Mock Manager mit simulierter Verbindung"""
-        with patch('src.governance.data_governance.NEO4J_AVAILABLE', True):
+        with patch("src.governance.data_governance.NEO4J_AVAILABLE", True):
             manager = Neo4jTemplateManager()
 
             # Mock driver
@@ -304,14 +304,16 @@ class TestNeo4jTemplateManager:
             # Simuliere Template-Abfrage-Ergebnisse
             mock_record = Mock()
             # Korrekte Mock-Konfiguration für __getitem__
-            mock_record.__getitem__ = Mock(side_effect=lambda key: {
-                'name': 'test_template',
-                'sections': ['overview', 'details'],
-                'tags': ['test'],
-                'workflow_step': 'testing',
-                'standards_json': '{"min_length": 100}',
-                'keyword_matches': 2
-            }.get(key))
+            mock_record.__getitem__ = Mock(
+                side_effect=lambda key: {
+                    "name": "test_template",
+                    "sections": ["overview", "details"],
+                    "tags": ["test"],
+                    "workflow_step": "testing",
+                    "standards_json": '{"min_length": 100}',
+                    "keyword_matches": 2,
+                }.get(key)
+            )
 
             mock_result.__iter__ = Mock(return_value=iter([mock_record]))
             mock_session.run.return_value = mock_result
@@ -323,9 +325,9 @@ class TestNeo4jTemplateManager:
         """Test der Neo4j Manager Initialisierung"""
         manager = Neo4jTemplateManager()
         assert manager is not None
-        assert hasattr(manager, 'uri')
-        assert hasattr(manager, 'user')
-        assert hasattr(manager, 'password')
+        assert hasattr(manager, "uri")
+        assert hasattr(manager, "user")
+        assert hasattr(manager, "password")
 
     def test_is_connected_false(self, mock_neo4j_manager):
         """Test der Verbindungsprüfung bei fehlender Verbindung"""
@@ -346,38 +348,39 @@ class TestNeo4jTemplateManager:
 
         assert isinstance(templates, dict)
         assert len(templates) > 0
-        assert 'test_template' in templates
+        assert "test_template" in templates
 
-        template = templates['test_template']
-        assert 'required_sections' in template
-        assert 'suggested_tags' in template
-        assert 'relevance_score' in template
+        template = templates["test_template"]
+        assert "required_sections" in template
+        assert "suggested_tags" in template
+        assert "relevance_score" in template
 
     def test_generate_template_config(self, mock_neo4j_manager):
         """Test der Template-Konfiguration-Generierung"""
         config = mock_neo4j_manager._generate_template_config("research", ["ai", "ml"])
 
         assert isinstance(config, dict)
-        assert 'required_sections' in config
-        assert 'suggested_tags' in config
-        assert 'workflow_step' in config
-        assert 'content_standards' in config
+        assert "required_sections" in config
+        assert "suggested_tags" in config
+        assert "workflow_step" in config
+        assert "content_standards" in config
 
         # Test spezifische Research-Konfiguration
-        assert 'abstract' in config['required_sections']
-        assert 'methodology' in config['required_sections']
-        assert 'research' in config['suggested_tags']
-        assert config['workflow_step'] == 'research'
+        assert "abstract" in config["required_sections"]
+        assert "methodology" in config["required_sections"]
+        assert "research" in config["suggested_tags"]
+        assert config["workflow_step"] == "research"
 
     def test_generate_template_config_unknown_type(self, mock_neo4j_manager):
         """Test Template-Generierung für unbekannten Typ"""
         config = mock_neo4j_manager._generate_template_config("unknown_type", ["test"])
 
         assert isinstance(config, dict)
-        assert 'overview' in config['required_sections']
-        assert 'content' in config['required_sections']
-        assert 'summary' in config['required_sections']
-        assert 'unknown_type' in config['suggested_tags']
+        assert "overview" in config["required_sections"]
+        assert "content" in config["required_sections"]
+        assert "summary" in config["required_sections"]
+        assert "unknown_type" in config["suggested_tags"]
+
 
 class TestIntegration:
     """Integrationstests für das gesamte System"""
@@ -392,14 +395,14 @@ class TestIntegration:
             name="Integration Test Template",
             required_sections=["intro", "body"],
             suggested_tags=["integration", "test"],
-            workflow_step="testing"
+            workflow_step="testing",
         )
 
         # Füge Workflow hinzu
         governance.add_workflow(
             name="Integration Test Workflow",
             steps=["start", "test", "end"],
-            templates=["Integration Test Template"]
+            templates=["Integration Test Template"],
         )
 
         # Validiere Note
@@ -408,7 +411,7 @@ class TestIntegration:
             content="Dies ist ein Integrationstest mit mindestens zwanzig Zeichen. **Intro:** Test intro. **Body:** Test body content.",
             description="Integration test note",
             note_type="test",
-            template="Integration Test Template"
+            template="Integration Test Template",
         )
 
         assert result.passed == True or len(result.errors) == 0
@@ -420,7 +423,7 @@ class TestIntegration:
         assert "Integration Test Template" in templates
         assert "Integration Test Workflow" in workflows
 
-    @patch('src.governance.data_governance.NEO4J_AVAILABLE', False)
+    @patch("src.governance.data_governance.NEO4J_AVAILABLE", False)
     def test_graceful_neo4j_unavailable(self):
         """Test des graceful Fallbacks wenn Neo4j nicht verfügbar ist"""
         governance = DataGovernanceEngine()
@@ -438,10 +441,11 @@ class TestIntegration:
             name="Test without Neo4j",
             content="This is a test without Neo4j connection with sufficient content length.",
             description="Test description",
-            project_type="research"
+            project_type="research",
         )
 
         assert isinstance(result, ValidationResult)
+
 
 class TestEdgeCases:
     """Tests für Edge Cases und Fehlerbehandlung"""
@@ -453,10 +457,7 @@ class TestEdgeCases:
     def test_empty_content(self, governance_engine):
         """Test mit leerem Content"""
         result = governance_engine.validate_note_creation(
-            name="Empty Content Test",
-            content="",
-            description="Test description",
-            note_type="test"
+            name="Empty Content Test", content="", description="Test description", note_type="test"
         )
 
         assert result.passed == False
@@ -469,7 +470,7 @@ class TestEdgeCases:
             name=long_name,
             content="Valid content with sufficient length for validation",
             description="Test description",
-            note_type="test"
+            note_type="test",
         )
 
         # Sollte eventuell Warning haben, aber nicht zwingend Fehler
@@ -481,7 +482,7 @@ class TestEdgeCases:
             name="Special Characters Test",
             content="Content with special characters: äöü ß € $ @ # % & * () [] {} <>",
             description="Test description",
-            note_type="test"
+            note_type="test",
         )
 
         # Sonderzeichen im Content sollten kein Problem sein
@@ -490,10 +491,7 @@ class TestEdgeCases:
     def test_none_values(self, governance_engine):
         """Test mit None-Werten"""
         result = governance_engine.validate_note_creation(
-            name=None,
-            content=None,
-            description=None,
-            note_type=None
+            name=None, content=None, description=None, note_type=None
         )
 
         assert result.passed == False
@@ -506,11 +504,12 @@ class TestEdgeCases:
             content="Content for missing template test with sufficient length",
             description="Test description",
             note_type="test",
-            template="NonExistentTemplate"
+            template="NonExistentTemplate",
         )
 
         # Sollte ohne Fehler durchlaufen, da Template optional ist
         assert isinstance(result, ValidationResult)
+
 
 if __name__ == "__main__":
     # Führe Tests aus wenn direkt aufgerufen

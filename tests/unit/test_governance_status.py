@@ -13,6 +13,7 @@ from pathlib import Path
 # Add project root to Python path dynamically
 project_root = Path(__file__).resolve().parent.parent.parent
 import sys
+
 sys.path.insert(0, str(project_root))
 
 from src.governance.governance_status import run_command, main
@@ -21,7 +22,7 @@ from src.governance.governance_status import run_command, main
 class TestRunCommand:
     """Test suite for run_command function"""
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_run_command_success(self, mock_subprocess):
         """Test successful command execution"""
         # Mock successful subprocess result
@@ -41,10 +42,10 @@ class TestRunCommand:
             shell=True,
             capture_output=True,
             text=True,
-            cwd='/Users/simonjanke/Projects/cortex-py'
+            cwd="/Users/simonjanke/Projects/cortex-py",
         )
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_run_command_failure(self, mock_subprocess):
         """Test command execution failure"""
         # Mock failed subprocess result
@@ -60,7 +61,7 @@ class TestRunCommand:
         # Verify failure handling
         assert result == "Error: Command failed"
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_run_command_exception(self, mock_subprocess):
         """Test command exception handling"""
         # Mock exception
@@ -76,7 +77,7 @@ class TestRunCommand:
         """Test that shows timeout parameter is not supported"""
         # The actual function doesn't support timeout parameter
         # This test documents the current API
-        with patch('subprocess.run') as mock_subprocess:
+        with patch("subprocess.run") as mock_subprocess:
             mock_result = Mock()
             mock_result.returncode = 0
             mock_result.stdout = "test output"
@@ -89,7 +90,7 @@ class TestRunCommand:
 class TestGovernanceStatusMain:
     """Test suite for governance status main function"""
 
-    @patch('src.governance.governance_status.run_command')
+    @patch("src.governance.governance_status.run_command")
     def test_main_function_basic_checks(self, mock_run_command):
         """Test main function performs basic system checks"""
         # Mock command results as strings (not Mock objects)
@@ -101,8 +102,8 @@ class TestGovernanceStatusMain:
         # Verify system checks were performed
         assert mock_run_command.called
 
-    @patch('src.governance.governance_status.run_command')
-    @patch('builtins.print')
+    @patch("src.governance.governance_status.run_command")
+    @patch("builtins.print")
     def test_main_function_python_version_check(self, mock_print, mock_run_command):
         """Test Python version checking"""
         # Mock Python version command result as string
@@ -115,8 +116,8 @@ class TestGovernanceStatusMain:
         assert mock_run_command.called
         assert mock_print.called
 
-    @patch('src.governance.governance_status.run_command')
-    @patch('builtins.print')
+    @patch("src.governance.governance_status.run_command")
+    @patch("builtins.print")
     def test_main_function_dependency_checks(self, mock_print, mock_run_command):
         """Test dependency checking"""
         # Mock dependency check result as string
@@ -129,8 +130,8 @@ class TestGovernanceStatusMain:
         assert mock_run_command.called
         assert mock_print.called
 
-    @patch('src.governance.governance_status.run_command')
-    @patch('os.path.exists')
+    @patch("src.governance.governance_status.run_command")
+    @patch("os.path.exists")
     def test_main_function_file_system_checks(self, mock_exists, mock_run_command):
         """Test file system status checks"""
         # Mock file existence checks
@@ -145,11 +146,13 @@ class TestGovernanceStatusMain:
         # Verify checks were performed
         assert mock_run_command.called
 
-    @patch('src.governance.governance_status.run_command')
+    @patch("src.governance.governance_status.run_command")
     def test_main_function_neo4j_status_check(self, mock_run_command):
         """Test Neo4j status checking"""
         # Mock successful governance report as JSON string
-        mock_run_command.return_value = '{"quality_score": 85, "total_notes": 100, "notes_with_issues": 5}'
+        mock_run_command.return_value = (
+            '{"quality_score": 85, "total_notes": 100, "notes_with_issues": 5}'
+        )
 
         # Test main function
         main()
@@ -157,7 +160,7 @@ class TestGovernanceStatusMain:
         # Verify Neo4j status was checked
         assert mock_run_command.called
 
-    @patch('src.governance.governance_status.run_command')
+    @patch("src.governance.governance_status.run_command")
     def test_main_function_service_status_checks(self, mock_run_command):
         """Test service status checks"""
         # Mock service status as string
@@ -173,17 +176,18 @@ class TestGovernanceStatusMain:
 class TestGovernanceStatusIntegration:
     """Integration tests for governance status"""
 
-    @patch('src.governance.governance_status.run_command')
-    @patch('builtins.print')
+    @patch("src.governance.governance_status.run_command")
+    @patch("builtins.print")
     def test_complete_status_check_workflow(self, mock_print, mock_run_command):
         """Test complete status checking workflow"""
+
         # Mock command results as strings, not Mock objects
         def mock_command_side_effect(cmd):
-            if 'python' in cmd.lower():
+            if "python" in cmd.lower():
                 return "Python 3.12.0"
-            elif 'governance-report' in cmd.lower():
+            elif "governance-report" in cmd.lower():
                 return '{"quality_score": 85, "total_notes": 100, "notes_with_issues": 5}'
-            elif 'neo4j' in cmd.lower():
+            elif "neo4j" in cmd.lower():
                 return "Error: Neo4j not found"
             else:
                 return "OK - system running"
@@ -197,7 +201,7 @@ class TestGovernanceStatusIntegration:
         assert mock_run_command.called
         assert mock_print.called
 
-    @patch('src.governance.governance_status.run_command')
+    @patch("src.governance.governance_status.run_command")
     def test_status_check_with_failures(self, mock_run_command):
         """Test status checking when some checks fail"""
         # Mock failing command results as strings
@@ -213,7 +217,7 @@ class TestGovernanceStatusIntegration:
 class TestGovernanceStatusErrorHandling:
     """Test error handling in governance status"""
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_run_command_exception_handling(self, mock_subprocess):
         """Test run_command exception handling"""
         # Mock subprocess exception
@@ -225,7 +229,7 @@ class TestGovernanceStatusErrorHandling:
         # Should handle system errors gracefully
         assert result is not None or result is None
 
-    @patch('src.governance.governance_status.run_command')
+    @patch("src.governance.governance_status.run_command")
     def test_main_function_with_system_errors(self, mock_run_command):
         """Test main function handling system errors"""
         # Mock run_command to raise exception
@@ -239,12 +243,13 @@ class TestGovernanceStatusErrorHandling:
             # Should either handle gracefully or raise appropriate exception
             pass
 
-    @patch('src.governance.governance_status.run_command')
-    @patch('builtins.print')
+    @patch("src.governance.governance_status.run_command")
+    @patch("builtins.print")
     def test_main_function_partial_failures(self, mock_print, mock_run_command):
         """Test main function with partial system failures"""
         # Mock mixed success/failure results as strings
         call_count = 0
+
         def mock_command_side_effect(cmd):
             nonlocal call_count
             call_count += 1

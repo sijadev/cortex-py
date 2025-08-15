@@ -12,13 +12,19 @@ import yaml
 from datetime import datetime
 
 # Pfad für Data Governance Engine
-sys.path.append('/Users/simonjanke/Projects/cortex-py')
-from src.governance.data_governance import DataGovernanceEngine, ValidationResult, print_validation_result
+sys.path.append("/Users/simonjanke/Projects/cortex-py")
+from src.governance.data_governance import (
+    DataGovernanceEngine,
+    ValidationResult,
+    print_validation_result,
+)
+
 
 @click.group()
 def cli():
     """🛡️ Data Governance CLI - Dynamische Systemverwaltung"""
     pass
+
 
 # Template-Management
 @cli.group()
@@ -26,17 +32,18 @@ def templates():
     """📋 Template-Management"""
     pass
 
-@templates.command('list')
-@click.option('--config', help='Pfad zur Konfigurationsdatei')
-@click.option('--project-type', help='Filtere nach Projekt-Typ')
-@click.option('--keywords', help='Filtere nach Keywords (kommagetrennt)')
+
+@templates.command("list")
+@click.option("--config", help="Pfad zur Konfigurationsdatei")
+@click.option("--project-type", help="Filtere nach Projekt-Typ")
+@click.option("--keywords", help="Filtere nach Keywords (kommagetrennt)")
 def list_templates(config, project_type, keywords):
     """Zeigt alle verfügbaren Templates an - mit intelligenter Neo4j-Integration."""
     governance = DataGovernanceEngine(config)
 
     # Verwende neue Context-basierte Methode
     if project_type or keywords:
-        keyword_list = keywords.split(',') if keywords else None
+        keyword_list = keywords.split(",") if keywords else None
         templates_dict = governance.get_templates_for_context(project_type, keywords=keyword_list)
     else:
         templates_dict = governance.get_templates()
@@ -55,60 +62,59 @@ def list_templates(config, project_type, keywords):
         print(f"   🔄 Workflow-Step: {details.get('workflow_step', 'Nicht zugeordnet')}")
 
         # Neo4j spezifische Informationen
-        if 'relevance_score' in details:
+        if "relevance_score" in details:
             print(f"   🎯 Relevanz-Score: {details['relevance_score']}")
 
-        standards = details.get('content_standards', {})
+        standards = details.get("content_standards", {})
         if standards:
             print(f"   📏 Min. Länge: {standards.get('min_length', 'Nicht definiert')}")
-            if standards.get('required_keywords'):
+            if standards.get("required_keywords"):
                 print(f"   🔑 Erforderliche Keywords: {', '.join(standards['required_keywords'])}")
 
-@templates.command('add')
-@click.argument('name')
-@click.option('--sections', help='Erforderliche Sektionen (kommagetrennt)')
-@click.option('--tags', help='Vorgeschlagene Tags (kommagetrennt)')
-@click.option('--workflow-step', help='Zugeordneter Workflow-Step')
-@click.option('--min-length', type=int, default=100, help='Minimale Content-Länge')
-@click.option('--keywords', help='Erforderliche Keywords (kommagetrennt)')
-@click.option('--config', help='Pfad zur Konfigurationsdatei')
+
+@templates.command("add")
+@click.argument("name")
+@click.option("--sections", help="Erforderliche Sektionen (kommagetrennt)")
+@click.option("--tags", help="Vorgeschlagene Tags (kommagetrennt)")
+@click.option("--workflow-step", help="Zugeordneter Workflow-Step")
+@click.option("--min-length", type=int, default=100, help="Minimale Content-Länge")
+@click.option("--keywords", help="Erforderliche Keywords (kommagetrennt)")
+@click.option("--config", help="Pfad zur Konfigurationsdatei")
 def add_template(name, sections, tags, workflow_step, min_length, keywords, config):
     """Fügt ein neues Template hinzu."""
     governance = DataGovernanceEngine(config)
 
-    required_sections = sections.split(',') if sections else []
-    suggested_tags = tags.split(',') if tags else []
-    required_keywords = keywords.split(',') if keywords else []
+    required_sections = sections.split(",") if sections else []
+    suggested_tags = tags.split(",") if tags else []
+    required_keywords = keywords.split(",") if keywords else []
 
-    content_standards = {
-        "min_length": min_length,
-        "required_keywords": required_keywords
-    }
+    content_standards = {"min_length": min_length, "required_keywords": required_keywords}
 
     governance.add_template(
         name=name,
         required_sections=required_sections,
         suggested_tags=suggested_tags,
         workflow_step=workflow_step,
-        content_standards=content_standards
+        content_standards=content_standards,
     )
 
     print(f"✅ Template '{name}' erfolgreich hinzugefügt")
 
     # Optional: In Konfigurationsdatei speichern
     if click.confirm("💾 In Konfigurationsdatei speichern?"):
-        save_to_config_file(governance, config or 'governance_config.yaml')
+        save_to_config_file(governance, config or "governance_config.yaml")
 
-@templates.command('validate')
-@click.argument('template_name')
-@click.argument('content_file', type=click.Path(exists=True))
-@click.option('--config', help='Pfad zur Konfigurationsdatei')
+
+@templates.command("validate")
+@click.argument("template_name")
+@click.argument("content_file", type=click.Path(exists=True))
+@click.option("--config", help="Pfad zur Konfigurationsdatei")
 def validate_template(template_name, content_file, config):
     """Validiert Content gegen ein Template."""
     governance = DataGovernanceEngine(config)
 
     # Content aus Datei laden
-    with open(content_file, 'r', encoding='utf-8') as f:
+    with open(content_file, "r", encoding="utf-8") as f:
         content = f.read()
 
     # Validierung durchführen
@@ -117,30 +123,31 @@ def validate_template(template_name, content_file, config):
         content=content,
         description="Test-Validierung",
         note_type="",
-        template=template_name
+        template=template_name,
     )
 
     print_validation_result(result, f"Template '{template_name}' Validierung")
 
-@templates.command('validate-smart')
-@click.argument('content_file', type=click.Path(exists=True))
-@click.option('--config', help='Pfad zur Konfigurationsdatei')
-@click.option('--project-type', help='Projekt-Typ für intelligente Template-Auswahl')
-@click.option('--project-name', help='Projekt-Name')
-@click.option('--keywords', help='Keywords für Template-Matching (kommagetrennt)')
+
+@templates.command("validate-smart")
+@click.argument("content_file", type=click.Path(exists=True))
+@click.option("--config", help="Pfad zur Konfigurationsdatei")
+@click.option("--project-type", help="Projekt-Typ für intelligente Template-Auswahl")
+@click.option("--project-name", help="Projekt-Name")
+@click.option("--keywords", help="Keywords für Template-Matching (kommagetrennt)")
 def validate_smart_template(content_file, config, project_type, project_name, keywords):
     """Intelligente Validierung mit automatischer Template-Erkennung aus Neo4j."""
     governance = DataGovernanceEngine(config)
 
     # Content aus Datei laden
-    with open(content_file, 'r', encoding='utf-8') as f:
+    with open(content_file, "r", encoding="utf-8") as f:
         content = f.read()
 
     # Keywords verarbeiten
-    keyword_list = keywords.split(',') if keywords else None
+    keyword_list = keywords.split(",") if keywords else None
 
     # Name aus Dateinamen ableiten
-    note_name = os.path.basename(content_file).replace('.md', '').replace('_', ' ')
+    note_name = os.path.basename(content_file).replace(".md", "").replace("_", " ")
 
     print(f"🤖 Intelligente Template-Validierung für: {note_name}")
     print(f"📁 Datei: {content_file}")
@@ -159,21 +166,22 @@ def validate_smart_template(content_file, config, project_type, project_name, ke
         description="Smart-Validierung aus CLI",
         project_type=project_type,
         project_name=project_name,
-        keywords=keyword_list
+        keywords=keyword_list,
     )
 
     print_validation_result(result, note_name)
 
-@templates.command('create-for-project')
-@click.argument('project_type')
-@click.argument('project_name')
-@click.option('--keywords', help='Keywords für Template-Generierung (kommagetrennt)')
-@click.option('--config', help='Pfad zur Konfigurationsdatei')
+
+@templates.command("create-for-project")
+@click.argument("project_type")
+@click.argument("project_name")
+@click.option("--keywords", help="Keywords für Template-Generierung (kommagetrennt)")
+@click.option("--config", help="Pfad zur Konfigurationsdatei")
 def create_project_template(project_type, project_name, keywords, config):
     """Erstellt automatisch Templates für neues Projekt in Neo4j."""
     governance = DataGovernanceEngine(config)
 
-    keyword_list = keywords.split(',') if keywords else []
+    keyword_list = keywords.split(",") if keywords else []
 
     print(f"🚀 Erstelle Template für Projekt: {project_name}")
     print(f"🎯 Typ: {project_type}")
@@ -198,14 +206,16 @@ def create_project_template(project_type, project_name, keywords, config):
     else:
         print("❌ Neo4j nicht verfügbar - Template kann nicht erstellt werden")
 
+
 # Workflow-Management
 @cli.group()
 def workflows():
     """🔄 Workflow-Management"""
     pass
 
-@workflows.command('list')
-@click.option('--config', help='Pfad zur Konfigurationsdatei')
+
+@workflows.command("list")
+@click.option("--config", help="Pfad zur Konfigurationsdatei")
 def list_workflows(config):
     """Zeigt alle verfügbaren Workflows an."""
     governance = DataGovernanceEngine(config)
@@ -220,24 +230,22 @@ def list_workflows(config):
         print(f"   📋 Templates: {', '.join(details.get('templates', []))}")
         print(f"   🤖 Auto-Assign: {'Ja' if details.get('auto_assign', False) else 'Nein'}")
 
-@workflows.command('add')
-@click.argument('name')
-@click.option('--steps', required=True, help='Workflow-Steps (kommagetrennt)')
-@click.option('--templates', help='Zugeordnete Templates (kommagetrennt)')
-@click.option('--auto-assign', is_flag=True, help='Automatische Zuordnung aktivieren')
-@click.option('--config', help='Pfad zur Konfigurationsdatei')
+
+@workflows.command("add")
+@click.argument("name")
+@click.option("--steps", required=True, help="Workflow-Steps (kommagetrennt)")
+@click.option("--templates", help="Zugeordnete Templates (kommagetrennt)")
+@click.option("--auto-assign", is_flag=True, help="Automatische Zuordnung aktivieren")
+@click.option("--config", help="Pfad zur Konfigurationsdatei")
 def add_workflow(name, steps, templates, auto_assign, config):
     """Fügt einen neuen Workflow hinzu."""
     governance = DataGovernanceEngine(config)
 
-    steps_list = steps.split(',')
-    templates_list = templates.split(',') if templates else []
+    steps_list = steps.split(",")
+    templates_list = templates.split(",") if templates else []
 
     governance.add_workflow(
-        name=name,
-        steps=steps_list,
-        templates=templates_list,
-        auto_assign=auto_assign
+        name=name, steps=steps_list, templates=templates_list, auto_assign=auto_assign
     )
 
     print(f"✅ Workflow '{name}' erfolgreich hinzugefügt")
@@ -245,11 +253,12 @@ def add_workflow(name, steps, templates, auto_assign, config):
 
     # Optional: In Konfigurationsdatei speichern
     if click.confirm("💾 In Konfigurationsdatei speichern?"):
-        save_to_config_file(governance, config or 'governance_config.yaml')
+        save_to_config_file(governance, config or "governance_config.yaml")
 
-@workflows.command('progress')
-@click.argument('workflow_name')
-@click.option('--config', help='Pfad zur Konfigurationsdatei')
+
+@workflows.command("progress")
+@click.argument("workflow_name")
+@click.option("--config", help="Pfad zur Konfigurationsdatei")
 def workflow_progress(workflow_name, config):
     """Zeigt Fortschritt eines Workflows (simuliert)."""
     governance = DataGovernanceEngine(config)
@@ -260,13 +269,14 @@ def workflow_progress(workflow_name, config):
         return
 
     workflow = workflows_dict[workflow_name]
-    steps = workflow['steps']
+    steps = workflow["steps"]
 
     print(f"🔄 Workflow-Fortschritt: {workflow_name}")
     print("=" * 50)
 
     # Simuliere Fortschritt (in echter Anwendung aus Neo4j)
     import random
+
     for i, step in enumerate(steps):
         completed = random.choice([True, False])
         notes_count = random.randint(0, 5)
@@ -279,18 +289,20 @@ def workflow_progress(workflow_name, config):
 
     print(f"\n📊 Gesamtfortschritt: {completed_steps}/{len(steps)} ({progress:.1f}%)")
 
+
 # Validation Rules Management
 @cli.group()
 def rules():
     """⚙️ Validierungsregeln-Management"""
     pass
 
-@rules.command('show')
-@click.option('--config', help='Pfad zur Konfigurationsdatei')
+
+@rules.command("show")
+@click.option("--config", help="Pfad zur Konfigurationsdatei")
 def show_rules(config):
     """Zeigt aktuelle Validierungsregeln an."""
     governance = DataGovernanceEngine(config)
-    rules_dict = governance.config.get('validation_rules', {})
+    rules_dict = governance.config.get("validation_rules", {})
 
     print("⚙️ Aktuelle Validierungsregeln:")
     print("=" * 50)
@@ -298,19 +310,20 @@ def show_rules(config):
     for rule, value in rules_dict.items():
         print(f"   {rule}: {value}")
 
-@rules.command('update')
-@click.argument('rule_name')
-@click.argument('value')
-@click.option('--config', help='Pfad zur Konfigurationsdatei')
+
+@rules.command("update")
+@click.argument("rule_name")
+@click.argument("value")
+@click.option("--config", help="Pfad zur Konfigurationsdatei")
 def update_rule(rule_name, value, config):
     """Aktualisiert eine Validierungsregel."""
     governance = DataGovernanceEngine(config)
 
     # Value-Typ erkennen und konvertieren
-    if value.lower() in ['true', 'false']:
-        value = value.lower() == 'true'
-    elif value.replace('.', '').isdigit():
-        value = float(value) if '.' in value else int(value)
+    if value.lower() in ["true", "false"]:
+        value = value.lower() == "true"
+    elif value.replace(".", "").isdigit():
+        value = float(value) if "." in value else int(value)
 
     governance.update_validation_rules({rule_name: value})
 
@@ -318,7 +331,8 @@ def update_rule(rule_name, value, config):
 
     # Optional: In Konfigurationsdatei speichern
     if click.confirm("💾 In Konfigurationsdatei speichern?"):
-        save_to_config_file(governance, config or 'governance_config.yaml')
+        save_to_config_file(governance, config or "governance_config.yaml")
+
 
 # System-Management
 @cli.group()
@@ -326,8 +340,9 @@ def system():
     """🔧 System-Management"""
     pass
 
-@system.command('status')
-@click.option('--config', help='Pfad zur Konfigurationsdatei')
+
+@system.command("status")
+@click.option("--config", help="Pfad zur Konfigurationsdatei")
 def system_status(config):
     """Zeigt Systemstatus der Data Governance Engine."""
     governance = DataGovernanceEngine(config)
@@ -337,13 +352,13 @@ def system_status(config):
 
     templates = governance.get_templates()
     workflows = governance.get_workflows()
-    rules = governance.config.get('validation_rules', {})
+    rules = governance.config.get("validation_rules", {})
 
     print(f"📋 Templates: {len(templates)}")
     print(f"🔄 Workflows: {len(workflows)}")
     print(f"⚙️ Validierungsregeln: {len(rules)}")
 
-    config_file = config or 'governance_config.yaml'
+    config_file = config or "governance_config.yaml"
     config_exists = os.path.exists(config_file)
     print(f"📁 Konfigurationsdatei: {'✅ Vorhanden' if config_exists else '❌ Nicht gefunden'}")
 
@@ -353,23 +368,25 @@ def system_status(config):
         print(f"   📏 Größe: {config_size} bytes")
         print(f"   🕒 Letzte Änderung: {config_modified.strftime('%Y-%m-%d %H:%M:%S')}")
 
-@system.command('export-config')
-@click.option('--output', '-o', help='Output-Datei', default='exported_governance_config.yaml')
-@click.option('--config', help='Pfad zur Konfigurationsdatei')
+
+@system.command("export-config")
+@click.option("--output", "-o", help="Output-Datei", default="exported_governance_config.yaml")
+@click.option("--config", help="Pfad zur Konfigurationsdatei")
 def export_config(output, config):
     """Exportiert aktuelle Konfiguration."""
     governance = DataGovernanceEngine(config)
 
-    with open(output, 'w', encoding='utf-8') as f:
+    with open(output, "w", encoding="utf-8") as f:
         yaml.safe_dump(governance.config, f, default_flow_style=False, allow_unicode=True)
 
     print(f"✅ Konfiguration exportiert nach: {output}")
 
-@system.command('validate-config')
-@click.option('--config', help='Pfad zur Konfigurationsdatei')
+
+@system.command("validate-config")
+@click.option("--config", help="Pfad zur Konfigurationsdatei")
 def validate_config(config):
     """Validiert Konfigurationsdatei."""
-    config_file = config or 'governance_config.yaml'
+    config_file = config or "governance_config.yaml"
 
     try:
         governance = DataGovernanceEngine(config_file)
@@ -385,19 +402,21 @@ def validate_config(config):
     except Exception as e:
         print(f"❌ Fehler in Konfigurationsdatei '{config_file}': {e}")
 
+
 # Test & Diagnostik
 @cli.group()
 def test():
     """🧪 Test & Diagnostik"""
     pass
 
-@test.command('note')
-@click.argument('name')
-@click.argument('content')
-@click.option('--description', default="Test-Note")
-@click.option('--type', 'note_type', help='Note-Typ')
-@click.option('--template', help='Template für Validierung')
-@click.option('--config', help='Pfad zur Konfigurationsdatei')
+
+@test.command("note")
+@click.argument("name")
+@click.argument("content")
+@click.option("--description", default="Test-Note")
+@click.option("--type", "note_type", help="Note-Typ")
+@click.option("--template", help="Template für Validierung")
+@click.option("--config", help="Pfad zur Konfigurationsdatei")
 def test_note(name, content, description, note_type, template, config):
     """Testet Note-Validierung ohne Speichern."""
     governance = DataGovernanceEngine(config)
@@ -407,14 +426,15 @@ def test_note(name, content, description, note_type, template, config):
         content=content,
         description=description,
         note_type=note_type or "",
-        template=template
+        template=template,
     )
 
     print_validation_result(result, name)
 
-@test.command('performance')
-@click.option('--iterations', type=int, default=100, help='Anzahl Test-Iterationen')
-@click.option('--config', help='Pfad zur Konfigurationsdatei')
+
+@test.command("performance")
+@click.option("--iterations", type=int, default=100, help="Anzahl Test-Iterationen")
+@click.option("--config", help="Pfad zur Konfigurationsdatei")
 def test_performance(iterations, config):
     """Testet Performance der Validierung."""
     import time
@@ -432,7 +452,7 @@ def test_performance(iterations, config):
             name=f"Test Note {i}",
             content=test_content,
             description="Performance-Test",
-            note_type="test"
+            note_type="test",
         )
 
     end_time = time.time()
@@ -444,15 +464,17 @@ def test_performance(iterations, config):
     print(f"   📊 Durchschnittliche Zeit pro Validierung: {avg_time:.2f} ms")
     print(f"   🚀 Validierungen pro Sekunde: {iterations/duration:.1f}")
 
+
 # Helper Functions
 def save_to_config_file(governance, config_file):
     """Speichert aktuelle Konfiguration in Datei."""
     try:
-        with open(config_file, 'w', encoding='utf-8') as f:
+        with open(config_file, "w", encoding="utf-8") as f:
             yaml.safe_dump(governance.config, f, default_flow_style=False, allow_unicode=True)
         print(f"💾 Konfiguration gespeichert in: {config_file}")
     except Exception as e:
         print(f"❌ Fehler beim Speichern: {e}")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     cli()

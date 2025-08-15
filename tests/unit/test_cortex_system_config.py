@@ -12,17 +12,19 @@ from pathlib import Path
 # Add project root to Python path dynamically
 project_root = Path(__file__).resolve().parent.parent.parent
 import sys
+
 sys.path.insert(0, str(project_root))
+
 
 # Mock the import that's causing issues
 @pytest.fixture(autouse=True)
 def mock_data_governance():
     """Mock the data governance module that has import issues"""
-    with patch.dict('sys.modules', {
-        'data_governance': Mock(),
-        'src.governance.data_governance': Mock()
-    }):
+    with patch.dict(
+        "sys.modules", {"data_governance": Mock(), "src.governance.data_governance": Mock()}
+    ):
         yield
+
 
 class TestCortexSystemConfigBasic:
     """Basic test suite for CortexSystemConfig class"""
@@ -32,24 +34,27 @@ class TestCortexSystemConfigBasic:
         try:
             # Try importing with proper path handling
             import importlib.util
+
             spec = importlib.util.spec_from_file_location(
-                "cortex_system_config",
-                project_root / "src" / "cortex_system_config.py"
+                "cortex_system_config", project_root / "src" / "cortex_system_config.py"
             )
             module = importlib.util.module_from_spec(spec)
 
             # Mock the problematic imports before loading
-            with patch.dict('sys.modules', {
-                'data_governance': Mock(),
-            }):
+            with patch.dict(
+                "sys.modules",
+                {
+                    "data_governance": Mock(),
+                },
+            ):
                 spec.loader.exec_module(module)
 
-            assert hasattr(module, 'CortexSystemConfig')
-            assert hasattr(module, 'initialize_cortex_system')
+            assert hasattr(module, "CortexSystemConfig")
+            assert hasattr(module, "initialize_cortex_system")
         except Exception as e:
             pytest.skip(f"Module import failed: {e}")
 
-    @patch('src.governance.data_governance.DataGovernanceEngine')
+    @patch("src.governance.data_governance.DataGovernanceEngine")
     def test_system_config_mock_initialization(self, mock_engine_class):
         """Test system configuration with mocked dependencies"""
         # Mock the DataGovernanceEngine
@@ -60,15 +65,18 @@ class TestCortexSystemConfigBasic:
         try:
             # Import with mocked dependencies
             import importlib.util
+
             spec = importlib.util.spec_from_file_location(
-                "cortex_system_config",
-                project_root / "src" / "cortex_system_config.py"
+                "cortex_system_config", project_root / "src" / "cortex_system_config.py"
             )
             module = importlib.util.module_from_spec(spec)
 
-            with patch.dict('sys.modules', {
-                'data_governance': Mock(DataGovernanceEngine=mock_engine_class),
-            }):
+            with patch.dict(
+                "sys.modules",
+                {
+                    "data_governance": Mock(DataGovernanceEngine=mock_engine_class),
+                },
+            ):
                 spec.loader.exec_module(module)
 
                 # Test basic functionality
@@ -82,8 +90,8 @@ class TestCortexSystemConfigBasic:
 
             # Read file to verify it contains expected classes
             content = config_file.read_text()
-            assert 'class CortexSystemConfig' in content
-            assert 'def initialize_cortex_system' in content
+            assert "class CortexSystemConfig" in content
+            assert "def initialize_cortex_system" in content
 
 
 class TestCortexSystemConfigStructure:
@@ -97,11 +105,11 @@ class TestCortexSystemConfigStructure:
         content = config_file.read_text()
 
         # Check for expected components
-        assert 'class CortexSystemConfig' in content
-        assert 'def initialize_cortex_system' in content
-        assert 'def create_cortex_system_engine' in content
-        assert 'def setup_cortex_system_templates' in content
-        assert 'def setup_cortex_system_workflows' in content
+        assert "class CortexSystemConfig" in content
+        assert "def initialize_cortex_system" in content
+        assert "def create_cortex_system_engine" in content
+        assert "def setup_cortex_system_templates" in content
+        assert "def setup_cortex_system_workflows" in content
 
     def test_config_file_imports(self):
         """Test that the config file has necessary imports"""
@@ -109,14 +117,16 @@ class TestCortexSystemConfigStructure:
         content = config_file.read_text()
 
         # Check for expected imports
-        assert 'import os' in content
-        assert 'data_governance' in content  # Either from data_governance or src.governance.data_governance
+        assert "import os" in content
+        assert (
+            "data_governance" in content
+        )  # Either from data_governance or src.governance.data_governance
 
 
 class TestSystemInitializationWorkflow:
     """Test system initialization workflow with mocks"""
 
-    @patch('builtins.__import__')
+    @patch("builtins.__import__")
     def test_initialization_workflow_mock(self, mock_import):
         """Test initialization workflow with completely mocked dependencies"""
         # Mock all imports
@@ -129,7 +139,7 @@ class TestSystemInitializationWorkflow:
         mock_engine_class.return_value = mock_engine
 
         def import_side_effect(name, *args, **kwargs):
-            if name == 'data_governance':
+            if name == "data_governance":
                 return mock_governance_module
             return __import__(name, *args, **kwargs)
 
@@ -142,17 +152,17 @@ class TestSystemInitializationWorkflow:
     def test_environment_configuration(self):
         """Test environment variable handling for system config"""
         test_env_vars = {
-            'NEO4J_URI': 'bolt://localhost:7687',
-            'NEO4J_USER': 'neo4j',
-            'NEO4J_PASSWORD': 'testpass',
-            'CORTEX_CONFIG_PATH': 'test_config.yaml'
+            "NEO4J_URI": "bolt://localhost:7687",
+            "NEO4J_USER": "neo4j",
+            "NEO4J_PASSWORD": "testpass",
+            "CORTEX_CONFIG_PATH": "test_config.yaml",
         }
 
         with patch.dict(os.environ, test_env_vars):
             # Test that environment variables are accessible
-            assert os.environ.get('NEO4J_URI') == 'bolt://localhost:7687'
-            assert os.environ.get('NEO4J_USER') == 'neo4j'
-            assert os.environ.get('CORTEX_CONFIG_PATH') == 'test_config.yaml'
+            assert os.environ.get("NEO4J_URI") == "bolt://localhost:7687"
+            assert os.environ.get("NEO4J_USER") == "neo4j"
+            assert os.environ.get("CORTEX_CONFIG_PATH") == "test_config.yaml"
 
 
 class TestSystemConfigErrorHandling:
@@ -169,7 +179,7 @@ class TestSystemConfigErrorHandling:
 
         # The file should have some form of import or dependency management
         assert len(content.strip()) > 0
-        assert 'import' in content
+        assert "import" in content
 
     def test_file_system_structure(self):
         """Test that the file system structure supports the configuration"""

@@ -9,13 +9,23 @@ import sys
 import os
 from datetime import datetime
 
+
 def run_command(cmd):
     """Execute command and return output"""
     try:
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, cwd='/Users/simonjanke/Projects/cortex-py')
-        return result.stdout.strip() if result.returncode == 0 else f"Error: {result.stderr.strip()}"
+        result = subprocess.run(
+            cmd,
+            shell=True,
+            capture_output=True,
+            text=True,
+            cwd="/Users/simonjanke/Projects/cortex-py",
+        )
+        return (
+            result.stdout.strip() if result.returncode == 0 else f"Error: {result.stderr.strip()}"
+        )
     except Exception as e:
         return f"Exception: {e}"
+
 
 def main():
     print("🛡️ CORTEX DATA GOVERNANCE SYSTEM STATUS")
@@ -41,10 +51,11 @@ def main():
     if "Error" not in governance_output:
         try:
             import json
+
             report = json.loads(governance_output)
-            quality_score = report.get('quality_score', 0)
-            total_notes = report.get('total_notes', 0)
-            issues = report.get('notes_with_issues', 0)
+            quality_score = report.get("quality_score", 0)
+            total_notes = report.get("total_notes", 0)
+            issues = report.get("notes_with_issues", 0)
 
             print(f"   📝 Total Notes: {total_notes}")
             print(f"   🎯 Quality Score: {quality_score}/100")
@@ -71,7 +82,7 @@ def main():
         ("fix-note-governance", "Fix individual note issues"),
         ("batch-governance-fix", "Fix all notes at once"),
         ("workflow-assign", "Assign notes to workflows"),
-        ("workflow-progress", "Track workflow completion")
+        ("workflow-progress", "Track workflow completion"),
     ]
 
     for cmd, desc in commands:
@@ -80,9 +91,13 @@ def main():
 
     # 4. Templates and Tags Status
     print("🏗️ SYSTEM COMPONENTS:")
-    template_count = run_command("python cortex_neo/cortex_cli.py list-templates 2>/dev/null | wc -l").strip()
+    template_count = run_command(
+        "python cortex_neo/cortex_cli.py list-templates 2>/dev/null | wc -l"
+    ).strip()
     tag_count = run_command("python cortex_neo/cortex_cli.py list-tags 2>/dev/null | wc -l").strip()
-    workflow_count = run_command("python cortex_neo/cortex_cli.py list-workflows 2>/dev/null | wc -l").strip()
+    workflow_count = run_command(
+        "python cortex_neo/cortex_cli.py list-workflows 2>/dev/null | wc -l"
+    ).strip()
 
     print(f"   🏷️ Templates Available: {template_count}")
     print(f"   📌 Tags in System: {tag_count}")
@@ -109,6 +124,7 @@ def main():
 
     print("🎉 DATA GOVERNANCE SYSTEM: FULLY OPERATIONAL!")
     print("📖 Full documentation available in: DATA_GOVERNANCE_GUIDE.md")
+
 
 if __name__ == "__main__":
     main()

@@ -47,27 +47,43 @@ try:
         EmbeddedResource,
         ServerCapabilities,
     )
+
     MCP_AVAILABLE = True
 except ImportError as e:
     print(f"Warning: MCP modules not available: {e}", file=sys.stderr)
+
     # Create mock classes for development/testing when MCP is not available
     class Server:
         def __init__(self, name):
             self.name = name
+
         def list_resources(self):
-            def decorator(func): return func
+            def decorator(func):
+                return func
+
             return decorator
+
         def read_resource(self):
-            def decorator(func): return func
+            def decorator(func):
+                return func
+
             return decorator
+
         def list_tools(self):
-            def decorator(func): return func
+            def decorator(func):
+                return func
+
             return decorator
+
         def call_tool(self):
-            def decorator(func): return func
+            def decorator(func):
+                return func
+
             return decorator
+
         def get_capabilities(self, notification_options=None, experimental_capabilities=None):
             return {}
+
         def run(self, *args, **kwargs):
             pass
 
@@ -87,7 +103,7 @@ except ImportError as e:
         def __init__(self, **kwargs):
             for k, v in kwargs.items():
                 setattr(self, k, v)
-                
+
     class NotificationOptions:
         def __init__(self, **kwargs):
             for k, v in kwargs.items():
@@ -96,9 +112,14 @@ except ImportError as e:
     async def stdio_server():
         # Mock stdio server for when MCP is not available
         class MockStream:
-            async def read(self): return b""
-            async def write(self, data): pass
+            async def read(self):
+                return b""
+
+            async def write(self, data):
+                pass
+
         return MockStream(), MockStream()
+
 
 # Initialize the unified MCP Server
 server = Server("cortex-py-unified")
@@ -106,6 +127,7 @@ server = Server("cortex-py-unified")
 # Project configuration
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 CORTEX_CLI_PATH = PROJECT_ROOT / "cortex_neo" / "cortex_cli.py"
+
 
 class CortexMCPServer:
     """Unified Cortex MCP Server implementation"""
@@ -122,7 +144,9 @@ class CortexMCPServer:
         """Check if Cortex CLI is available"""
         return self.cortex_cli_path.exists()
 
-    async def run_cortex_command(self, command: str, args: List[str] = None, timeout: int = 30) -> Dict[str, Any]:
+    async def run_cortex_command(
+        self, command: str, args: List[str] = None, timeout: int = 30
+    ) -> Dict[str, Any]:
         """Run a Cortex CLI command and return the result"""
         if args is None:
             args = []
@@ -135,14 +159,14 @@ class CortexMCPServer:
                 capture_output=True,
                 text=True,
                 cwd=str(self.project_root),
-                timeout=timeout
+                timeout=timeout,
             )
 
             return {
                 "returncode": result.returncode,
                 "stdout": result.stdout,
                 "stderr": result.stderr,
-                "success": result.returncode == 0
+                "success": result.returncode == 0,
             }
 
         except subprocess.TimeoutExpired:
@@ -150,18 +174,20 @@ class CortexMCPServer:
                 "returncode": -1,
                 "stdout": "",
                 "stderr": f"Command timeout after {timeout} seconds",
-                "success": False
+                "success": False,
             }
         except Exception as e:
             return {
                 "returncode": -1,
                 "stdout": "",
                 "stderr": f"Command execution error: {str(e)}",
-                "success": False
+                "success": False,
             }
+
 
 # Create server instance
 cortex_server = CortexMCPServer()
+
 
 # Define handler functions
 async def handle_list_resources() -> List[Resource]:
@@ -204,6 +230,7 @@ async def handle_list_resources() -> List[Resource]:
             mimeType="application/json",
         ),
     ]
+
 
 async def handle_read_resource(uri: str) -> str:
     """Read a specific Cortex resource"""
@@ -285,8 +312,8 @@ Usage Examples:
                     "links": True,
                     "export_import": True,
                     "backup": True,
-                    "ai_integration": True
-                }
+                    "ai_integration": True,
+                },
             }
             return json.dumps(config_data, indent=2)
         except Exception as e:
@@ -294,6 +321,7 @@ Usage Examples:
 
     else:
         raise ValueError(f"Unknown resource: {uri}")
+
 
 async def handle_list_tools() -> List[Tool]:
     """List all available Cortex tools"""
@@ -490,6 +518,7 @@ async def handle_list_tools() -> List[Tool]:
         ),
     ]
 
+
 async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
     """Execute a Cortex tool"""
 
@@ -572,9 +601,12 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[TextCon
 
         # Convert structure to JSON string
         import json
+
         structure_json = json.dumps(structure)
 
-        result = await cortex_server.run_cortex_command("template-create", ["--name", name, "--structure", structure_json])
+        result = await cortex_server.run_cortex_command(
+            "template-create", ["--name", name, "--structure", structure_json]
+        )
 
         if result["success"]:
             output = f"Template created successfully: '{name}'"
@@ -591,7 +623,10 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[TextCon
         if not source_id or not target_id:
             return [TextContent(type="text", text="Error: Source and target IDs are required")]
 
-        result = await cortex_server.run_cortex_command("link-create", ["--source", source_id, "--target", target_id, "--relationship", relationship])
+        result = await cortex_server.run_cortex_command(
+            "link-create",
+            ["--source", source_id, "--target", target_id, "--relationship", relationship],
+        )
 
         if result["success"]:
             output = f"Link created successfully between '{source_id}' and '{target_id}'"
@@ -604,7 +639,9 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[TextCon
         format = arguments.get("format", "json")
         filter = arguments.get("filter", "")
 
-        result = await cortex_server.run_cortex_command("data-export", ["--format", format, "--filter", filter])
+        result = await cortex_server.run_cortex_command(
+            "data-export", ["--format", format, "--filter", filter]
+        )
 
         if result["success"]:
             output = f"Data exported successfully in {format} format"
@@ -620,7 +657,9 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[TextCon
         if not file_path:
             return [TextContent(type="text", text="Error: File path is required")]
 
-        result = await cortex_server.run_cortex_command("data-import", ["--file", file_path, "--format", format])
+        result = await cortex_server.run_cortex_command(
+            "data-import", ["--file", file_path, "--format", format]
+        )
 
         if result["success"]:
             output = f"Data imported successfully from '{file_path}'"
@@ -644,7 +683,9 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[TextCon
     elif name == "cortex_validate_links":
         fix_errors = arguments.get("fix_errors", False)
 
-        result = await cortex_server.run_cortex_command("links-validate", ["--fix-errors" if fix_errors else "--dry-run"])
+        result = await cortex_server.run_cortex_command(
+            "links-validate", ["--fix-errors" if fix_errors else "--dry-run"]
+        )
 
         if result["success"]:
             output = "Links validated successfully"
@@ -656,6 +697,7 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[TextCon
     else:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
+
 # Register handlers with server if MCP is available
 if MCP_AVAILABLE:
     server.list_resources()(handle_list_resources)
@@ -663,10 +705,14 @@ if MCP_AVAILABLE:
     server.list_tools()(handle_list_tools)
     server.call_tool()(handle_call_tool)
 
+
 async def main():
     """Main function to start the unified MCP server"""
     if not MCP_AVAILABLE:
-        print("Error: MCP modules are not available. Please install with: pip install mcp", file=sys.stderr)
+        print(
+            "Error: MCP modules are not available. Please install with: pip install mcp",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     try:
@@ -679,16 +725,16 @@ async def main():
                     server_name="cortex-py-unified",
                     server_version="1.0.0",
                     capabilities=server.get_capabilities(
-                        notification_options=NotificationOptions(),
-                        experimental_capabilities={}
-                    )
-                )
+                        notification_options=NotificationOptions(), experimental_capabilities={}
+                    ),
+                ),
             )
     except KeyboardInterrupt:
         print("\nMCP Server stopped by user", file=sys.stderr)
     except Exception as e:
         print(f"MCP Server error: {e}", file=sys.stderr)
         sys.exit(1)
+
 
 if __name__ == "__main__":
     # Handle command line arguments

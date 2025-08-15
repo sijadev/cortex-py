@@ -18,11 +18,7 @@ try:
     from .cortex_mcp_server import server, main, CortexMCPServer
 
     # Export the main components
-    __all__ = [
-        'server',
-        'main',
-        'CortexMCPServer'
-    ]
+    __all__ = ["server", "main", "CortexMCPServer"]
 
     # Version information
     __version__ = "1.0.0"

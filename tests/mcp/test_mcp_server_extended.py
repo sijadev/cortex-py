@@ -32,6 +32,7 @@ try:
         EmbeddedResource,
         ServerCapabilities,
     )
+
     MCP_AVAILABLE = True
     print("✅ MCP Library erfolgreich importiert")
 except ImportError as e:
@@ -42,6 +43,7 @@ except ImportError as e:
 try:
     # Lade unseren eigenen cortex_mcp_server direkt über Dateipfad
     import importlib.util
+
     cortex_mcp_path = project_root / "src" / "mcp" / "cortex_mcp_server.py"
     if cortex_mcp_path.exists():
         spec = importlib.util.spec_from_file_location("cortex_mcp_server", cortex_mcp_path)
@@ -56,26 +58,33 @@ except Exception as e:
     MCP_SERVER_AVAILABLE = False
     print(f"❌ Cortex MCP Server Import fehlgeschlagen: {e}")
 
-@pytest.mark.skipif(not (MCP_AVAILABLE or MCP_SERVER_AVAILABLE), reason="Neither MCP library nor Cortex MCP server available")
+
+@pytest.mark.skipif(
+    not (MCP_AVAILABLE or MCP_SERVER_AVAILABLE),
+    reason="Neither MCP library nor Cortex MCP server available",
+)
 class TestMCPServerExtended:
     """Erweiterte Tests für den einheitlichen MCP Server."""
 
     def test_cortex_mcp_module_exists(self):
         """Test ob das einheitliche Cortex MCP Modul existiert."""
         cortex_mcp_path = project_root / "src" / "mcp" / "cortex_mcp_server.py"
-        assert cortex_mcp_path.exists(), f"Unified Cortex MCP server module not found: {cortex_mcp_path}"
+        assert (
+            cortex_mcp_path.exists()
+        ), f"Unified Cortex MCP server module not found: {cortex_mcp_path}"
 
     def test_mcp_server_imports(self):
         """Test ob MCP Server Imports funktionieren."""
         if MCP_SERVER_AVAILABLE:
             # Test mit unserer eigenen Implementierung
             assert cortex_mcp_server is not None, "Cortex MCP server should be available"
-            assert hasattr(cortex_mcp_server, 'main'), "Main function not found"
-            assert hasattr(cortex_mcp_server, 'server'), "Server instance not found"
+            assert hasattr(cortex_mcp_server, "main"), "Main function not found"
+            assert hasattr(cortex_mcp_server, "server"), "Server instance not found"
         elif MCP_AVAILABLE:
             # Test mit externer MCP Library
             try:
                 from mcp.server import Server, NotificationOptions
+
                 test_server = Server("test")
                 assert test_server is not None
             except ImportError as e:
@@ -88,8 +97,12 @@ class TestMCPServerExtended:
         if MCP_SERVER_AVAILABLE:
             # Test mit unserer eigenen Implementierung
             assert cortex_mcp_server is not None, "Cortex MCP server should be available"
-            assert hasattr(cortex_mcp_server, 'handle_list_resources'), "handle_list_resources function missing"
-            assert hasattr(cortex_mcp_server, 'handle_call_tool'), "handle_call_tool function missing"
+            assert hasattr(
+                cortex_mcp_server, "handle_list_resources"
+            ), "handle_list_resources function missing"
+            assert hasattr(
+                cortex_mcp_server, "handle_call_tool"
+            ), "handle_call_tool function missing"
         else:
             pytest.skip("Cortex MCP server not available")
 
@@ -100,6 +113,7 @@ class TestMCPServerExtended:
             # Test mit externer MCP Library
             try:
                 from mcp.server import Server, NotificationOptions
+
                 test_server = Server("test-server")
                 assert test_server is not None, "Server instance should not be None"
                 print("✅ MCP Server erfolgreich mit externer Library initialisiert")
@@ -108,7 +122,7 @@ class TestMCPServerExtended:
         elif MCP_SERVER_AVAILABLE:
             # Test mit unserer eigenen Implementierung
             assert cortex_mcp_server is not None, "Cortex MCP server should be available"
-            assert hasattr(cortex_mcp_server, 'server'), "Server instance should be available"
+            assert hasattr(cortex_mcp_server, "server"), "Server instance should be available"
             print("✅ Cortex MCP Server erfolgreich initialisiert")
         else:
             pytest.skip("Neither external MCP library nor Cortex MCP server available")
@@ -173,13 +187,14 @@ class TestMCPServerExtended:
                 result = await cortex_mcp_server.handle_call_tool("cortex_status", {})
                 assert isinstance(result, list), "Tool result should be a list"
                 assert len(result) > 0, "Tool should return results"
-                assert hasattr(result[0], 'text'), "Result should have text content"
+                assert hasattr(result[0], "text"), "Result should have text content"
                 print("✅ Tool erfolgreich ausgeführt")
             except Exception as e:
                 # Tool execution might fail if Cortex CLI is not available, which is acceptable
                 print(f"Tool execution test warning: {e}")
         else:
             pytest.skip("Cortex MCP server not available")
+
 
 class TestMCPServerExtendedFallback:
     """Fallback-Tests für erweiterte MCP Funktionalität."""
@@ -194,7 +209,7 @@ class TestMCPServerExtendedFallback:
         # Überprüfe die neue einheitliche Struktur
         required_files = [
             "__init__.py",
-            "cortex_mcp_server.py"  # Only the unified server file should exist
+            "cortex_mcp_server.py",  # Only the unified server file should exist
         ]
 
         for file in required_files:
@@ -202,13 +217,13 @@ class TestMCPServerExtendedFallback:
             assert file_path.exists(), f"Required file missing: {file_path}"
 
         # Überprüfe, dass die alten duplizierten Dateien nicht mehr existieren
-        old_files = [
-            "mcp_cortex_server.py"
-        ]
+        old_files = ["mcp_cortex_server.py"]
 
         for old_file in old_files:
             old_file_path = mcp_dir / old_file
-            assert not old_file_path.exists(), f"Old duplicate file should be removed: {old_file_path}"
+            assert (
+                not old_file_path.exists()
+            ), f"Old duplicate file should be removed: {old_file_path}"
 
     def test_mcp_server_script_executable(self):
         """Test ob das MCP Server Skript ausführbar ist."""
@@ -219,9 +234,12 @@ class TestMCPServerExtendedFallback:
 
         # Test help option
         try:
-            result = subprocess.run([
-                sys.executable, str(mcp_server_path), "--help"
-            ], capture_output=True, text=True, timeout=10)
+            result = subprocess.run(
+                [sys.executable, str(mcp_server_path), "--help"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
 
             # Should either show help or run without error
             assert result.returncode == 0, f"Server script failed: {result.stderr}"
@@ -236,11 +254,12 @@ class TestMCPServerExtendedFallback:
         if MCP_SERVER_AVAILABLE:
             # Test mit unserer eigenen Implementierung
             assert cortex_mcp_server is not None, "Cortex MCP server should be available"
-            assert hasattr(cortex_mcp_server, 'main'), "Main function should be available"
-            assert hasattr(cortex_mcp_server, 'server'), "Server instance should be available"
+            assert hasattr(cortex_mcp_server, "main"), "Main function should be available"
+            assert hasattr(cortex_mcp_server, "server"), "Server instance should be available"
             print("✅ Backward compatibility test erfolgreich")
         else:
             pytest.skip("Cortex MCP server not available")
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

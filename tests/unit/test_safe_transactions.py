@@ -15,6 +15,7 @@ from datetime import datetime
 # Add project root to Python path dynamically
 project_root = Path(__file__).resolve().parent.parent.parent
 import sys
+
 sys.path.insert(0, str(project_root))
 
 from src.safe_transactions import SafeTransactionManager, DataIntegrityValidator
@@ -47,9 +48,9 @@ class TestSafeTransactionManager:
     def test_transaction_manager_initialization(self, transaction_manager):
         """Test SafeTransactionManager initialization"""
         assert transaction_manager is not None
-        assert hasattr(transaction_manager, 'safe_transaction')
-        assert hasattr(transaction_manager, '_create_backup')
-        assert hasattr(transaction_manager, '_cleanup_old_backups')
+        assert hasattr(transaction_manager, "safe_transaction")
+        assert hasattr(transaction_manager, "_create_backup")
+        assert hasattr(transaction_manager, "_cleanup_old_backups")
 
     def test_safe_transaction_decorator_success(self, transaction_manager):
         """Test safe transaction decorator with successful operation"""
@@ -73,7 +74,7 @@ class TestSafeTransactionManager:
         with pytest.raises(ValueError):
             failing_operation()
 
-    @patch('src.safe_transactions.datetime')
+    @patch("src.safe_transactions.datetime")
     def test_create_backup(self, mock_datetime, transaction_manager, temp_backup_dir):
         """Test backup creation functionality"""
         # Mock current time properly
@@ -82,8 +83,8 @@ class TestSafeTransactionManager:
         mock_datetime.now.return_value = mock_now
 
         # Test backup creation with proper mocking
-        with patch('builtins.open', create=True) as mock_open:
-            with patch('json.dump') as mock_json_dump:
+        with patch("builtins.open", create=True) as mock_open:
+            with patch("json.dump") as mock_json_dump:
                 backup_path = transaction_manager._create_backup("test_operation")
 
                 # Verify backup creation was attempted
@@ -131,14 +132,14 @@ class TestDataIntegrityValidator:
         # Mock query results for get_current_stats with all required fields
         mock_result = Mock()
         mock_result.single.return_value = {
-            'node_count': 100,
-            'relationship_count': 200,
-            'notes': 50,  # Changed from dict to simple count
-            'tags': 25,   # Changed from list to simple count
-            'workflows': 10,  # Changed from dict to simple count
-            'note_links': 150,  # Add missing field
-            'workflow_links': 30,  # Add missing field
-            'check_time': 1692115200000  # Add missing timestamp field
+            "node_count": 100,
+            "relationship_count": 200,
+            "notes": 50,  # Changed from dict to simple count
+            "tags": 25,  # Changed from list to simple count
+            "workflows": 10,  # Changed from dict to simple count
+            "note_links": 150,  # Add missing field
+            "workflow_links": 30,  # Add missing field
+            "check_time": 1692115200000,  # Add missing timestamp field
         }
         mock_session.run.return_value = mock_result
 
@@ -147,7 +148,7 @@ class TestDataIntegrityValidator:
 
         return DataIntegrityValidator(driver=mock_driver)
 
-    @patch('src.safe_transactions.os.path.exists')
+    @patch("src.safe_transactions.os.path.exists")
     def test_get_current_stats(self, mock_exists, integrity_validator):
         """Test getting current data statistics"""
         # Mock file system
@@ -159,7 +160,7 @@ class TestDataIntegrityValidator:
         # Verify stats structure
         assert isinstance(stats, dict)
         # Should contain expected keys from the mocked result
-        assert 'timestamp' in stats or len(stats) >= 0
+        assert "timestamp" in stats or len(stats) >= 0
 
     def test_validate_integrity_success(self, integrity_validator):
         """Test integrity validation with valid data"""
@@ -167,18 +168,18 @@ class TestDataIntegrityValidator:
         baseline_stats = {
             "node_count": 100,
             "relationship_count": 200,
-            "last_modified": "2025-08-15T10:00:00"
+            "last_modified": "2025-08-15T10:00:00",
         }
 
         current_stats = {
             "node_count": 105,
             "relationship_count": 210,
             "last_modified": "2025-08-15T14:00:00",
-            "notes": {"count": 55, "quality_score": 90 }
+            "notes": {"count": 55, "quality_score": 90},
         }
 
         # Test validation
-        with patch.object(integrity_validator, 'get_current_stats', return_value=current_stats):
+        with patch.object(integrity_validator, "get_current_stats", return_value=current_stats):
             result = integrity_validator.validate_integrity(baseline_stats)
 
             # Should return validation result (might be boolean or dict)
@@ -187,20 +188,16 @@ class TestDataIntegrityValidator:
     def test_validate_integrity_corruption_detected(self, integrity_validator):
         """Test integrity validation when corruption is detected"""
         # Create stats indicating potential corruption
-        baseline_stats = {
-            "node_count": 100,
-            "relationship_count": 200,
-            "notes": {"count": 50}
-        }
+        baseline_stats = {"node_count": 100, "relationship_count": 200, "notes": {"count": 50}}
 
         corrupted_stats = {
             "node_count": 50,  # Significant decrease
             "relationship_count": 100,
-            "notes": {"count": 25}
+            "notes": {"count": 25},
         }
 
         # Test validation with corruption
-        with patch.object(integrity_validator, 'get_current_stats', return_value=corrupted_stats):
+        with patch.object(integrity_validator, "get_current_stats", return_value=corrupted_stats):
             result = integrity_validator.validate_integrity(baseline_stats)
 
             # Should detect corruption (might return False or error dict)
@@ -213,10 +210,10 @@ class TestDataIntegrityValidator:
             "node_count": 100,
             "relationship_count": 200,
             "notes": {"count": 50, "quality_score": 85},
-            "timestamp": "2025-08-15T14:00:00"
+            "timestamp": "2025-08-15T14:00:00",
         }
 
-        with patch.object(integrity_validator, 'get_current_stats', return_value=mock_stats):
+        with patch.object(integrity_validator, "get_current_stats", return_value=mock_stats):
             result = integrity_validator.emergency_restore_check()
 
             # Should return restore recommendation
@@ -255,11 +252,7 @@ class TestSafeTransactionIntegration:
         @manager.safe_transaction("complex_data_operation")
         def complex_data_operation(tx):
             # Simulate complex data modification
-            return {
-                "operation": "data_migration",
-                "records_processed": 1000,
-                "success": True
-            }
+            return {"operation": "data_migration", "records_processed": 1000, "success": True}
 
         # Execute operation
         result = complex_data_operation()
@@ -293,10 +286,10 @@ class TestSafeTransactionIntegration:
             "node_count": 100,
             "relationship_count": 200,
             "notes": {"count": 50, "quality_score": 85},
-            "timestamp": "2025-08-15T14:00:00"
+            "timestamp": "2025-08-15T14:00:00",
         }
 
-        with patch.object(validator, 'get_current_stats', return_value=mock_stats):
+        with patch.object(validator, "get_current_stats", return_value=mock_stats):
             # Get baseline stats
             baseline = validator.get_current_stats()
 
@@ -355,12 +348,12 @@ class TestSafeTransactionErrorHandling:
         # Mock the session.run to return minimal required data
         mock_result = Mock()
         mock_result.single.return_value = {
-            'notes': 50,
-            'tags': 25,
-            'workflows': 10,
-            'note_links': 150,
-            'workflow_links': 30,
-            'check_time': 1692115200000
+            "notes": 50,
+            "tags": 25,
+            "workflows": 10,
+            "note_links": 150,
+            "workflow_links": 30,
+            "check_time": 1692115200000,
         }
         mock_session.run.return_value = mock_result
 

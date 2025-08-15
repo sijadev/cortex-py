@@ -41,6 +41,7 @@ try:
         EmbeddedResource,
         ServerCapabilities,
     )
+
     MCP_AVAILABLE = True
 except ImportError as e:
     MCP_AVAILABLE = False
@@ -49,6 +50,7 @@ except ImportError as e:
 try:
     # Lade unseren eigenen cortex_mcp_server direkt über Dateipfad
     import importlib.util
+
     cortex_mcp_path = project_root / "src" / "mcp" / "cortex_mcp_server.py"
     if cortex_mcp_path.exists():
         spec = importlib.util.spec_from_file_location("cortex_mcp_server", cortex_mcp_path)
@@ -60,24 +62,34 @@ try:
 except Exception as e:
     MCP_SERVER_AVAILABLE = False
 
+
 class TestMCPCortexIntegration:
     """Integration Tests zwischen MCP Server und Cortex CLI"""
 
     def test_cortex_cli_available(self):
         """Teste dass Cortex CLI verfügbar ist"""
-        project_root = Path(__file__).parent.parent.parent  # Go up two levels now (mcp -> tests -> project)
+        project_root = Path(
+            __file__
+        ).parent.parent.parent  # Go up two levels now (mcp -> tests -> project)
         cortex_cli_path = project_root / "cortex_neo" / "cortex_cli.py"
 
         assert cortex_cli_path.exists(), f"Cortex CLI nicht gefunden: {cortex_cli_path}"
 
         # Teste grundlegende CLI Funktionalität
         try:
-            result = subprocess.run([
-                sys.executable, str(cortex_cli_path), "--help"
-            ], capture_output=True, text=True, timeout=10)
+            result = subprocess.run(
+                [sys.executable, str(cortex_cli_path), "--help"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
 
             # CLI sollte Help-Text zurückgeben
-            assert result.returncode == 0 or "Usage:" in result.stdout or "help" in result.stdout.lower()
+            assert (
+                result.returncode == 0
+                or "Usage:" in result.stdout
+                or "help" in result.stdout.lower()
+            )
 
         except subprocess.TimeoutExpired:
             pytest.skip("Cortex CLI Timeout - möglicherweise Neo4j nicht verfügbar")
@@ -88,16 +100,23 @@ class TestMCPCortexIntegration:
         """Teste ob Neo4j Verbindung möglich ist"""
         try:
             # Versuche Neo4j Status zu prüfen
-            project_root = Path(__file__).parent.parent.parent  # Go up two levels now (mcp -> tests -> project)
+            project_root = Path(
+                __file__
+            ).parent.parent.parent  # Go up two levels now (mcp -> tests -> project)
             cortex_cli_path = project_root / "cortex_neo" / "cortex_cli.py"
 
-            result = subprocess.run([
-                sys.executable, str(cortex_cli_path), "status"
-            ], capture_output=True, text=True, timeout=5,
-              env={**os.environ,
-                   "NEO4J_URI": "bolt://localhost:7687",
-                   "NEO4J_USER": "neo4j",
-                   "NEO4J_PASSWORD": "neo4jtest"})
+            result = subprocess.run(
+                [sys.executable, str(cortex_cli_path), "status"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                env={
+                    **os.environ,
+                    "NEO4J_URI": "bolt://localhost:7687",
+                    "NEO4J_USER": "neo4j",
+                    "NEO4J_PASSWORD": "neo4jtest",
+                },
+            )
 
             # Auch wenn Neo4j nicht läuft, sollte der CLI-Aufruf funktionieren
             assert result.returncode in [0, 1], "CLI-Aufruf sollte funktionieren"
@@ -107,7 +126,11 @@ class TestMCPCortexIntegration:
         except Exception:
             pytest.skip("Neo4j Connection Check nicht möglich")
 
-@pytest.mark.skipif(not (MCP_AVAILABLE or MCP_SERVER_AVAILABLE), reason="Neither MCP library nor Cortex MCP server available")
+
+@pytest.mark.skipif(
+    not (MCP_AVAILABLE or MCP_SERVER_AVAILABLE),
+    reason="Neither MCP library nor Cortex MCP server available",
+)
 @pytest.mark.asyncio
 class TestMCPServerRealWorld:
     """Real-World MCP Server Tests mit einheitlichem Server und echter CLI Integration"""
@@ -122,9 +145,17 @@ class TestMCPServerRealWorld:
                 assert len(result) > 0, "Result should not be empty"
 
                 # Sollte entweder echte Status-Info oder Fallback enthalten
-                assert any(keyword in result.lower() for keyword in [
-                    "status", "cortex", "neo4j", "fehler", "nicht verfügbar", "operational"
-                ])
+                assert any(
+                    keyword in result.lower()
+                    for keyword in [
+                        "status",
+                        "cortex",
+                        "neo4j",
+                        "fehler",
+                        "nicht verfügbar",
+                        "operational",
+                    ]
+                )
                 print("✅ MCP Server mit echter CLI Integration erfolgreich getestet")
             except Exception as e:
                 pytest.fail(f"MCP server test failed: {e}")
@@ -139,7 +170,7 @@ class TestMCPServerRealWorld:
                 result = await cortex_mcp_server.handle_call_tool("cortex_status", {})
                 assert isinstance(result, list), "Result should be a list"
                 assert len(result) > 0, "Result should not be empty"
-                assert hasattr(result[0], 'text'), "Result should have text content"
+                assert hasattr(result[0], "text"), "Result should have text content"
 
                 # Text sollte Status-Information enthalten
                 status_text = result[0].text
@@ -177,19 +208,20 @@ class TestMCPServerRealWorld:
         else:
             pytest.skip("Cortex MCP server not available")
 
+
 class TestMCPServerFiles:
     """Tests für MCP Server Dateien und Konfiguration"""
 
     def test_mcp_server_files_exist(self):
         """Teste dass alle MCP Server Dateien existieren"""
-        project_root = Path(__file__).parent.parent.parent  # Go up two levels now (mcp -> tests -> project)
+        project_root = Path(
+            __file__
+        ).parent.parent.parent  # Go up two levels now (mcp -> tests -> project)
 
         # Check in src/mcp directory first
         mcp_src_dir = project_root / "src" / "mcp"
 
-        required_files = [
-            "cortex_mcp_server.py"
-        ]
+        required_files = ["cortex_mcp_server.py"]
 
         found_files = []
         for filename in required_files:
@@ -206,9 +238,7 @@ class TestMCPServerFiles:
                 continue
 
             # Check alternative names
-            alt_names = [
-                f"mcp_{filename}"
-            ]
+            alt_names = [f"mcp_{filename}"]
 
             for alt_name in alt_names:
                 if alt_name and (project_root / alt_name).exists():
@@ -223,7 +253,9 @@ class TestMCPServerFiles:
 
     def test_mcp_server_syntax_valid(self):
         """Teste dass MCP Server Dateien syntaktisch korrekt sind"""
-        project_root = Path(__file__).parent.parent.parent  # Go up two levels now (mcp -> tests -> project)
+        project_root = Path(
+            __file__
+        ).parent.parent.parent  # Go up two levels now (mcp -> tests -> project)
 
         # Look for MCP server files in multiple locations
         potential_files = []
@@ -242,9 +274,9 @@ class TestMCPServerFiles:
         valid_files = 0
         for filepath in potential_files:
             try:
-                with open(filepath, 'r', encoding='utf-8') as f:
+                with open(filepath, "r", encoding="utf-8") as f:
                     source = f.read()
-                compile(source, str(filepath), 'exec')
+                compile(source, str(filepath), "exec")
                 valid_files += 1
             except SyntaxError as e:
                 pytest.fail(f"Syntax-Fehler in {filepath.name}: {e}")
@@ -252,7 +284,9 @@ class TestMCPServerFiles:
                 # Skip files that can't be read but don't fail the test
                 continue
 
-        assert valid_files > 0, f"No valid MCP server files found among {len(potential_files)} candidates"
+        assert (
+            valid_files > 0
+        ), f"No valid MCP server files found among {len(potential_files)} candidates"
 
     def test_start_scripts_exist(self):
         """Teste dass MCP Start-Skripte existieren"""
@@ -263,13 +297,16 @@ class TestMCPServerFiles:
             assert start_script.exists(), "MCP Start-Skript fehlt"
 
             # Prüfe Script-Inhalt
-            with open(start_script, 'r') as f:
+            with open(start_script, "r") as f:
                 content = f.read()
 
             # Das Skript delegiert an manage_mcp_server.sh, prüfe auf relevante Inhalte
-            assert "mcp" in content.lower() or "cortex" in content.lower(), "Start-Skript sollte MCP/Cortex referenzieren"
+            assert (
+                "mcp" in content.lower() or "cortex" in content.lower()
+            ), "Start-Skript sollte MCP/Cortex referenzieren"
         else:
             pytest.skip("MCP Start-Skript nicht gefunden - möglicherweise noch nicht eingerichtet")
+
 
 class TestMCPServerCompatibility:
     """Tests für MCP Server Kompatibilität"""
@@ -292,14 +329,14 @@ class TestMCPServerCompatibility:
                 uri="test://resource",
                 name="Test Resource",
                 description="Test Description",
-                mimeType="text/plain"
+                mimeType="text/plain",
             )
             assert test_resource is not None
 
             test_tool = Tool(
                 name="test_tool",
                 description="Test Tool",
-                inputSchema={"type": "object", "properties": {}}
+                inputSchema={"type": "object", "properties": {}},
             )
             assert test_tool is not None
 
@@ -310,8 +347,12 @@ class TestMCPServerCompatibility:
             # Falls die externe MCP Library nicht verfügbar ist, teste unsere eigene Implementierung
             if MCP_SERVER_AVAILABLE:
                 assert cortex_mcp_server is not None, "Cortex MCP server should be available"
-                assert hasattr(cortex_mcp_server, 'handle_list_resources'), "handle_list_resources should be available"
-                assert hasattr(cortex_mcp_server, 'handle_call_tool'), "handle_call_tool should be available"
+                assert hasattr(
+                    cortex_mcp_server, "handle_list_resources"
+                ), "handle_list_resources should be available"
+                assert hasattr(
+                    cortex_mcp_server, "handle_call_tool"
+                ), "handle_call_tool should be available"
                 print("✅ Eigene MCP Implementierung funktioniert korrekt")
             else:
                 pytest.skip(f"Weder externe MCP Library noch eigene Implementierung verfügbar: {e}")
@@ -325,8 +366,9 @@ class TestMCPServerCompatibility:
         assert python_version >= (3, 8), f"Python Version zu alt: {python_version}"
 
         # Async/await sollte verfügbar sein
-        assert hasattr(asyncio, 'run'), "asyncio.run nicht verfügbar"
-        assert hasattr(asyncio, 'gather'), "asyncio.gather nicht verfügbar"
+        assert hasattr(asyncio, "run"), "asyncio.run nicht verfügbar"
+        assert hasattr(asyncio, "gather"), "asyncio.gather nicht verfügbar"
+
 
 class TestMCPServerDocumentationIntegrity:
     """Tests für MCP Server Dokumentations-Integrität"""
@@ -337,16 +379,15 @@ class TestMCPServerDocumentationIntegrity:
         setup_doc = docs_dir / "MCP_SETUP_ANLEITUNG.md"
 
         if setup_doc.exists():
-            with open(setup_doc, 'r', encoding='utf-8') as f:
+            with open(setup_doc, "r", encoding="utf-8") as f:
                 content = f.read()
 
-            required_sections = [
-                "Installation", "Setup", "Claude Desktop", "Test"
-            ]
+            required_sections = ["Installation", "Setup", "Claude Desktop", "Test"]
 
             for section in required_sections:
-                assert section.lower() in content.lower(), \
-                    f"Setup-Dokumentation fehlt Sektion: {section}"
+                assert (
+                    section.lower() in content.lower()
+                ), f"Setup-Dokumentation fehlt Sektion: {section}"
 
     def test_mcp_readme_completeness(self):
         """Teste dass MCP README vollständig ist"""
@@ -354,13 +395,14 @@ class TestMCPServerDocumentationIntegrity:
         readme_mcp = docs_dir / "README_MCP.md"
 
         if readme_mcp.exists():
-            with open(readme_mcp, 'r', encoding='utf-8') as f:
+            with open(readme_mcp, "r", encoding="utf-8") as f:
                 content = f.read()
 
             # Sollte grundlegende Informationen enthalten
             assert len(content) > 500, "MCP README zu kurz"
             assert "MCP" in content, "MCP README erwähnt MCP nicht"
             assert "Server" in content, "MCP README erwähnt Server nicht"
+
 
 # Utility Functions
 def check_mcp_environment():
@@ -375,11 +417,14 @@ def check_mcp_environment():
 
     # Python Version Check
     import sys
+
     if sys.version_info < (3, 8):
         issues.append(f"Python Version zu alt: {sys.version_info}")
 
     # Server Files Check - Fix path reference
-    project_root = Path(__file__).parent.parent.parent  # Go up two levels now (mcp -> tests -> project)
+    project_root = Path(
+        __file__
+    ).parent.parent.parent  # Go up two levels now (mcp -> tests -> project)
     server_files = ["cortex_mcp_server.py"]  # Update to use the unified server file
     mcp_src_dir = project_root / "src" / "mcp"
 
@@ -388,6 +433,7 @@ def check_mcp_environment():
             issues.append(f"Server-Datei fehlt: {filename}")
 
     return issues
+
 
 def run_mcp_integration_tests():
     """Führe MCP Integration Tests aus"""
@@ -401,12 +447,7 @@ def run_mcp_integration_tests():
             print(f"   - {issue}")
         print()
 
-    test_result = pytest.main([
-        __file__,
-        "-v",
-        "--tb=short",
-        "--asyncio-mode=auto"
-    ])
+    test_result = pytest.main([__file__, "-v", "--tb=short", "--asyncio-mode=auto"])
 
     if test_result == 0:
         print("✅ Alle MCP Integration Tests erfolgreich!")
@@ -415,7 +456,11 @@ def run_mcp_integration_tests():
 
     return test_result
 
-@pytest.mark.skipif(not (MCP_AVAILABLE or MCP_SERVER_AVAILABLE), reason="Neither MCP library nor Cortex MCP server available")
+
+@pytest.mark.skipif(
+    not (MCP_AVAILABLE or MCP_SERVER_AVAILABLE),
+    reason="Neither MCP library nor Cortex MCP server available",
+)
 class TestMCPServerIntegration:
     """Integration Tests für MCP Server."""
 
@@ -437,7 +482,7 @@ class TestMCPServerIntegration:
         elif MCP_SERVER_AVAILABLE:
             # Test mit unserer eigenen Implementierung
             assert cortex_mcp_server is not None, "Cortex MCP server should be available"
-            assert hasattr(cortex_mcp_server, 'main'), "Main function should be available"
+            assert hasattr(cortex_mcp_server, "main"), "Main function should be available"
             print("✅ Cortex MCP Server Startup Test erfolgreich")
         else:
             pytest.skip("Neither external MCP library nor Cortex MCP server available")
@@ -448,7 +493,9 @@ class TestMCPServerIntegration:
             # Test mit unserer eigenen Implementierung
             assert cortex_mcp_server is not None, "Cortex MCP server should be available"
             # Teste ob der Server Neo4j-Integration hat
-            assert hasattr(cortex_mcp_server, 'CortexMCPServer'), "CortexMCPServer class should be available"
+            assert hasattr(
+                cortex_mcp_server, "CortexMCPServer"
+            ), "CortexMCPServer class should be available"
             print("✅ Neo4j Integration Test erfolgreich")
         elif MCP_AVAILABLE:
             # Mock Neo4j connection test mit externer Library
@@ -458,6 +505,7 @@ class TestMCPServerIntegration:
             assert os.environ.get("NEO4J_URI") is not None
         else:
             pytest.skip("Neither MCP implementation available")
+
 
 class TestMCPServerIntegrationFallback:
     """Fallback Integration Tests."""
@@ -475,9 +523,11 @@ class TestMCPServerIntegrationFallback:
         try:
             # Test basic project structure imports
             import src
+
             assert True
         except ImportError:
             pytest.skip("Project src module not importable")
+
 
 if __name__ == "__main__":
     run_mcp_integration_tests()

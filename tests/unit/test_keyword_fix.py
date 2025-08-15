@@ -5,9 +5,11 @@ Test für Keyword-Extraktion Fix
 
 import pytest
 import sys
-sys.path.append('/Users/simonjanke/Projects/cortex-py/src')
+
+sys.path.append("/Users/simonjanke/Projects/cortex-py/src")
 
 from src.governance.data_governance import DataGovernanceEngine
+
 
 def test_keyword_extraction():
     """Test der korrigierten Keyword-Extraktion"""
@@ -18,5 +20,5 @@ def test_keyword_extraction():
 
     assert isinstance(keywords, list)
     assert len(keywords) > 0
-    assert 'python' in keywords
-    assert 'development' in keywords
+    assert "python" in keywords
+    assert "development" in keywords

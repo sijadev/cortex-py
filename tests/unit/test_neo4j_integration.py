@@ -12,9 +12,11 @@ from pathlib import Path
 # Add project root to Python path dynamically
 project_root = Path(__file__).resolve().parent.parent.parent
 import sys
+
 sys.path.insert(0, str(project_root))
 
 from src.governance.data_governance import Neo4jTemplateManager, DataGovernanceEngine
+
 
 # Helper function to check Neo4j availability
 def _neo4j_available():
@@ -26,7 +28,7 @@ def _neo4j_available():
         neo4j_password = os.environ.get("NEO4J_PASSWORD")
 
         # Wenn NEO4J_DISABLED gesetzt ist, ist Neo4j definitiv nicht verfügbar für echte Verbindungen
-        if os.environ.get('NEO4J_DISABLED', '').lower() in ('1', 'true', 'yes'):
+        if os.environ.get("NEO4J_DISABLED", "").lower() in ("1", "true", "yes"):
             return False
 
         # Wenn kein Passwort gesetzt ist, ist Neo4j wahrscheinlich nicht konfiguriert
@@ -38,14 +40,17 @@ def _neo4j_available():
     except Exception:
         return False
 
+
 def _can_run_mocked_tests():
     """Check if we can run mocked Neo4j tests (should always be True unless critical imports fail)"""
     try:
         # Mock tests sollten immer laufen können, auch wenn NEO4J_DISABLED gesetzt ist
         from unittest.mock import Mock, patch
+
         return True
     except ImportError:
         return False
+
 
 class TestNeo4jRealConnection:
     """Tests mit echter Neo4j-Verbindung (falls verfügbar)"""
@@ -56,18 +61,12 @@ class TestNeo4jRealConnection:
         manager = Neo4jTemplateManager()
         return manager
 
-    @pytest.mark.skipif(
-        not _neo4j_available(),
-        reason="Neo4j nicht verfügbar"
-    )
+    @pytest.mark.skipif(not _neo4j_available(), reason="Neo4j nicht verfügbar")
     def test_real_neo4j_connection(self, neo4j_manager):
         """Test echte Neo4j-Verbindung"""
         assert neo4j_manager.is_connected() == True
 
-    @pytest.mark.skipif(
-        not _neo4j_available(),
-        reason="Neo4j nicht verfügbar"
-    )
+    @pytest.mark.skipif(not _neo4j_available(), reason="Neo4j nicht verfügbar")
     def test_create_and_retrieve_template(self, neo4j_manager):
         """Test Erstellen und Abrufen eines Templates in Neo4j"""
         if not neo4j_manager.is_connected():
@@ -75,26 +74,18 @@ class TestNeo4jRealConnection:
 
         # Template erstellen
         templates = neo4j_manager.create_template_if_missing(
-            "test_project",
-            "Test Integration Project",
-            ["integration", "test"]
+            "test_project", "Test Integration Project", ["integration", "test"]
         )
 
         assert isinstance(templates, dict)
         assert len(templates) > 0
 
         # Template wieder abrufen
-        retrieved = neo4j_manager.get_templates_for_project(
-            "test_project",
-            ["integration", "test"]
-        )
+        retrieved = neo4j_manager.get_templates_for_project("test_project", ["integration", "test"])
 
         assert isinstance(retrieved, dict)
 
-    @pytest.mark.skipif(
-        not _neo4j_available(),
-        reason="Neo4j nicht verfügbar"
-    )
+    @pytest.mark.skipif(not _neo4j_available(), reason="Neo4j nicht verfügbar")
     def test_template_usage_tracking(self, neo4j_manager):
         """Test Template-Nutzungsstatistik"""
         if not neo4j_manager.is_connected():
@@ -102,9 +93,7 @@ class TestNeo4jRealConnection:
 
         # Template erstellen falls nicht vorhanden
         templates = neo4j_manager.create_template_if_missing(
-            "usage_test",
-            "Usage Test Project",
-            ["usage", "tracking"]
+            "usage_test", "Usage Test Project", ["usage", "tracking"]
         )
 
         # Usage-Count erhöhen
@@ -120,6 +109,7 @@ class TestNeo4jRealConnection:
             # Check that at least one template has usage tracking
             template_keys = list(retrieved.keys())
             assert len(template_keys) > 0, "Should find at least one template"
+
 
 class TestNeo4jMockedConnection:
     """Tests mit gemockter Neo4j-Verbindung für zuverlässige Tests"""
@@ -144,8 +134,8 @@ class TestNeo4jMockedConnection:
         """Neo4j Manager mit gemockter Verbindung"""
         driver, session = mock_driver
 
-        with patch('src.governance.data_governance.NEO4J_AVAILABLE', True):
-            with patch('neo4j.GraphDatabase.driver', return_value=driver):
+        with patch("src.governance.data_governance.NEO4J_AVAILABLE", True):
+            with patch("neo4j.GraphDatabase.driver", return_value=driver):
                 manager = Neo4jTemplateManager()
                 manager.driver = driver
                 return manager, session
@@ -156,14 +146,16 @@ class TestNeo4jMockedConnection:
 
         # Mock query result
         mock_record = Mock()
-        mock_record.__getitem__ = Mock(side_effect=lambda key: {
-            'name': 'test_template',
-            'sections': ['overview', 'details'],
-            'tags': ['test', 'mock'],
-            'workflow_step': 'testing',
-            'standards_json': '{"min_length": 100}',
-            'keyword_matches': 3
-        }[key])
+        mock_record.__getitem__ = Mock(
+            side_effect=lambda key: {
+                "name": "test_template",
+                "sections": ["overview", "details"],
+                "tags": ["test", "mock"],
+                "workflow_step": "testing",
+                "standards_json": '{"min_length": 100}',
+                "keyword_matches": 3,
+            }[key]
+        )
 
         mock_result = [mock_record]
         mock_session.run.return_value = mock_result
@@ -172,9 +164,9 @@ class TestNeo4jMockedConnection:
         templates = manager.get_templates_for_project("test", ["mock"])
 
         assert isinstance(templates, dict)
-        assert 'test_template' in templates
-        assert templates['test_template']['relevance_score'] == 3
-        assert templates['test_template']['required_sections'] == ['overview', 'details']
+        assert "test_template" in templates
+        assert templates["test_template"]["relevance_score"] == 3
+        assert templates["test_template"]["required_sections"] == ["overview", "details"]
 
     def test_create_template_if_missing_new_template(self, connected_neo4j_manager):
         """Test Erstellen eines neuen Templates"""
@@ -199,14 +191,16 @@ class TestNeo4jMockedConnection:
 
         # Mock: Existierendes Template
         mock_record = Mock()
-        mock_record.__getitem__ = Mock(side_effect=lambda key: {
-            'name': 'existing_template',
-            'sections': ['overview'],
-            'tags': ['existing'],
-            'workflow_step': 'existing',
-            'standards_json': '{}',
-            'keyword_matches': 1
-        }[key])
+        mock_record.__getitem__ = Mock(
+            side_effect=lambda key: {
+                "name": "existing_template",
+                "sections": ["overview"],
+                "tags": ["existing"],
+                "workflow_step": "existing",
+                "standards_json": "{}",
+                "keyword_matches": 1,
+            }[key]
+        )
 
         mock_session.run.return_value = [mock_record]
 
@@ -214,7 +208,7 @@ class TestNeo4jMockedConnection:
         result = manager.create_template_if_missing("existing", "Existing Project", ["existing"])
 
         assert isinstance(result, dict)
-        assert 'existing_template' in result
+        assert "existing_template" in result
 
     def test_update_template_usage(self, connected_neo4j_manager):
         """Test Template-Nutzung-Update"""
@@ -233,26 +227,27 @@ class TestNeo4jMockedConnection:
         manager, _ = connected_neo4j_manager
 
         test_cases = [
-            ('research', ['hypothesis', 'data', 'analysis']),
-            ('development', ['requirements', 'architecture', 'code']),
-            ('documentation', ['usage', 'example', 'guide']),
-            ('meeting', ['attendees', 'decisions', 'actions']),
-            ('unknown_type', [])
+            ("research", ["hypothesis", "data", "analysis"]),
+            ("development", ["requirements", "architecture", "code"]),
+            ("documentation", ["usage", "example", "guide"]),
+            ("meeting", ["attendees", "decisions", "actions"]),
+            ("unknown_type", []),
         ]
 
         for project_type, expected_keywords in test_cases:
             config = manager._generate_template_config(project_type, expected_keywords[:2])
 
             assert isinstance(config, dict)
-            assert 'required_sections' in config
-            assert 'suggested_tags' in config
-            assert 'workflow_step' in config
-            assert 'content_standards' in config
+            assert "required_sections" in config
+            assert "suggested_tags" in config
+            assert "workflow_step" in config
+            assert "content_standards" in config
 
             # Prüfe dass Keywords integriert wurden
             if expected_keywords:
-                content_keywords = config['content_standards']['required_keywords']
+                content_keywords = config["content_standards"]["required_keywords"]
                 assert any(kw in content_keywords for kw in expected_keywords[:2])
+
 
 class TestDataGovernanceEngineWithNeo4j:
     """Tests für DataGovernanceEngine mit Neo4j-Integration"""
@@ -267,7 +262,9 @@ class TestDataGovernanceEngineWithNeo4j:
     @pytest.fixture
     def governance_with_neo4j(self, mock_neo4j_manager):
         """DataGovernanceEngine mit gemocktem Neo4j"""
-        with patch('src.governance.data_governance.Neo4jTemplateManager', return_value=mock_neo4j_manager):
+        with patch(
+            "src.governance.data_governance.Neo4jTemplateManager", return_value=mock_neo4j_manager
+        ):
             engine = DataGovernanceEngine()
             engine.neo4j_manager = mock_neo4j_manager
             return engine, mock_neo4j_manager
@@ -278,12 +275,12 @@ class TestDataGovernanceEngineWithNeo4j:
 
         # Mock Neo4j Templates
         mock_manager.get_templates_for_project.return_value = {
-            'neo4j_template': {
-                'required_sections': ['neo4j_section'],
-                'suggested_tags': ['neo4j'],
-                'workflow_step': 'neo4j_step',
-                'content_standards': {'min_length': 200},
-                'relevance_score': 5
+            "neo4j_template": {
+                "required_sections": ["neo4j_section"],
+                "suggested_tags": ["neo4j"],
+                "workflow_step": "neo4j_step",
+                "content_standards": {"min_length": 200},
+                "relevance_score": 5,
             }
         }
 
@@ -291,7 +288,7 @@ class TestDataGovernanceEngineWithNeo4j:
         result = engine.get_templates_for_context("test_type", "Test Project", ["test"])
 
         assert isinstance(result, dict)
-        assert 'neo4j_template' in result
+        assert "neo4j_template" in result
         mock_manager.get_templates_for_project.assert_called_once_with("test_type", ["test"])
 
     def test_get_templates_for_context_neo4j_empty_create_new(self, governance_with_neo4j):
@@ -301,11 +298,11 @@ class TestDataGovernanceEngineWithNeo4j:
         # Mock: Erste Abfrage leer, zweite mit neuem Template
         mock_manager.get_templates_for_project.return_value = {}
         mock_manager.create_template_if_missing.return_value = {
-            'new_template': {
-                'required_sections': ['new_section'],
-                'suggested_tags': ['new'],
-                'workflow_step': 'new_step',
-                'content_standards': {'min_length': 250}
+            "new_template": {
+                "required_sections": ["new_section"],
+                "suggested_tags": ["new"],
+                "workflow_step": "new_step",
+                "content_standards": {"min_length": 250},
             }
         }
 
@@ -313,8 +310,10 @@ class TestDataGovernanceEngineWithNeo4j:
         result = engine.get_templates_for_context("new_type", "New Project", ["new"])
 
         assert isinstance(result, dict)
-        assert 'new_template' in result
-        mock_manager.create_template_if_missing.assert_called_once_with("new_type", "New Project", ["new"])
+        assert "new_template" in result
+        mock_manager.create_template_if_missing.assert_called_once_with(
+            "new_type", "New Project", ["new"]
+        )
 
     def test_get_templates_for_context_fallback_to_local(self, governance_with_neo4j):
         """Test Fallback zu lokalen Templates"""
@@ -338,15 +337,12 @@ class TestDataGovernanceEngineWithNeo4j:
 
         # Mock Templates und Template-Auswahl
         mock_manager.get_templates_for_project.return_value = {
-            'context_template': {
-                'required_sections': ['overview'],
-                'suggested_tags': ['context'],
-                'workflow_step': 'context_step',
-                'content_standards': {
-                    'min_length': 100,
-                    'required_keywords': ['context']
-                },
-                'relevance_score': 3
+            "context_template": {
+                "required_sections": ["overview"],
+                "suggested_tags": ["context"],
+                "workflow_step": "context_step",
+                "content_standards": {"min_length": 100, "required_keywords": ["context"]},
+                "relevance_score": 3,
             }
         }
 
@@ -357,13 +353,13 @@ class TestDataGovernanceEngineWithNeo4j:
             description="Context test description",
             project_type="context_test",
             project_name="Context Project",
-            keywords=["context", "test"]
+            keywords=["context", "test"],
         )
 
-        assert hasattr(result, 'passed')
-        assert hasattr(result, 'errors')
-        assert hasattr(result, 'warnings')
-        assert hasattr(result, 'suggestions')
+        assert hasattr(result, "passed")
+        assert hasattr(result, "errors")
+        assert hasattr(result, "warnings")
+        assert hasattr(result, "suggestions")
 
         # Template-Nutzung sollte getrackt werden
         mock_manager.update_template_usage.assert_called_once()
@@ -373,32 +369,29 @@ class TestDataGovernanceEngineWithNeo4j:
         engine, _ = governance_with_neo4j
 
         templates = {
-            'single_template': {
-                'relevance_score': 1,
-                'content_standards': {'required_keywords': ['test']}
+            "single_template": {
+                "relevance_score": 1,
+                "content_standards": {"required_keywords": ["test"]},
             }
         }
 
         result = engine._select_best_template(templates, ["test"], "test content")
-        assert result == 'single_template'
+        assert result == "single_template"
 
     def test_select_best_template_multiple(self, governance_with_neo4j):
         """Test beste Template-Auswahl bei mehreren Templates"""
         engine, _ = governance_with_neo4j
 
         templates = {
-            'low_score': {
-                'relevance_score': 1,
-                'content_standards': {'required_keywords': []}
+            "low_score": {"relevance_score": 1, "content_standards": {"required_keywords": []}},
+            "high_score": {
+                "relevance_score": 5,
+                "content_standards": {"required_keywords": ["test", "high"]},
             },
-            'high_score': {
-                'relevance_score': 5,
-                'content_standards': {'required_keywords': ['test', 'high']}
-            }
         }
 
         result = engine._select_best_template(templates, ["test", "high"], "test high content")
-        assert result == 'high_score'
+        assert result == "high_score"
 
     def test_select_best_template_empty(self, governance_with_neo4j):
         """Test Template-Auswahl bei leeren Templates"""
@@ -416,12 +409,13 @@ class TestDataGovernanceEngineWithNeo4j:
 
         assert isinstance(keywords, list)
         assert len(keywords) <= 7  # Max 7 Keywords (increased from 5)
-        assert 'python' in keywords
-        assert 'development' in keywords
-        assert 'react' in keywords
+        assert "python" in keywords
+        assert "development" in keywords
+        assert "react" in keywords
         # ML kann als 'ml' oder 'machine learning' erkannt werden
-        assert any(kw in ['ml', 'machine', 'learning'] for kw in keywords)
-        assert 'database' in keywords
+        assert any(kw in ["ml", "machine", "learning"] for kw in keywords)
+        assert "database" in keywords
+
 
 class TestNeo4jErrorHandling:
     """Tests für Fehlerbehandlung bei Neo4j-Operationen"""
@@ -463,6 +457,7 @@ class TestNeo4jErrorHandling:
         except Exception:
             pytest.fail("update_template_usage should handle errors gracefully")
 
+
 class TestNeo4jIntegrationWorkflows:
     """Tests für komplette Neo4j-Integration-Workflows"""
 
@@ -475,28 +470,28 @@ class TestNeo4jIntegrationWorkflows:
 
         # Mock Template-Erstellung
         mock_manager.create_template_if_missing.return_value = {
-            'integration_test_project': {
-                'required_sections': ['overview', 'implementation', 'results'],
-                'suggested_tags': ['integration', 'test', 'development'],
-                'workflow_step': 'development',
-                'content_standards': {
-                    'min_length': 300,
-                    'required_keywords': ['integration', 'test']
-                }
+            "integration_test_project": {
+                "required_sections": ["overview", "implementation", "results"],
+                "suggested_tags": ["integration", "test", "development"],
+                "workflow_step": "development",
+                "content_standards": {
+                    "min_length": 300,
+                    "required_keywords": ["integration", "test"],
+                },
             }
         }
 
         # Mock Template-Abfrage
         mock_manager.get_templates_for_project.return_value = {
-            'integration_test_project': {
-                'required_sections': ['overview', 'implementation', 'results'],
-                'suggested_tags': ['integration', 'test', 'development'],
-                'workflow_step': 'development',
-                'content_standards': {
-                    'min_length': 300,
-                    'required_keywords': ['integration', 'test']
+            "integration_test_project": {
+                "required_sections": ["overview", "implementation", "results"],
+                "suggested_tags": ["integration", "test", "development"],
+                "workflow_step": "development",
+                "content_standards": {
+                    "min_length": 300,
+                    "required_keywords": ["integration", "test"],
                 },
-                'relevance_score': 8
+                "relevance_score": 8,
             }
         }
 
@@ -506,7 +501,9 @@ class TestNeo4jIntegrationWorkflows:
         """Test kompletter Workflow für neues Projekt"""
         mock_manager = complete_mock_setup
 
-        with patch('src.governance.data_governance.Neo4jTemplateManager', return_value=mock_manager):
+        with patch(
+            "src.governance.data_governance.Neo4jTemplateManager", return_value=mock_manager
+        ):
             # 1. Engine initialisieren
             engine = DataGovernanceEngine()
 
@@ -514,11 +511,11 @@ class TestNeo4jIntegrationWorkflows:
             templates = engine.get_templates_for_context(
                 project_type="development",
                 project_name="Integration Test Project",
-                keywords=["integration", "test"]
+                keywords=["integration", "test"],
             )
 
             assert isinstance(templates, dict)
-            assert 'integration_test_project' in templates
+            assert "integration_test_project" in templates
 
             # 3. Note mit Context validieren
             result = engine.validate_note_creation_with_context(
@@ -527,10 +524,10 @@ class TestNeo4jIntegrationWorkflows:
                 description="Integration test note",
                 project_type="development",
                 project_name="Integration Test Project",
-                keywords=["integration", "test"]
+                keywords=["integration", "test"],
             )
 
-            assert hasattr(result, 'passed')
+            assert hasattr(result, "passed")
             # Template-Nutzung sollte getrackt werden
             mock_manager.update_template_usage.assert_called()
 
@@ -539,7 +536,9 @@ class TestNeo4jIntegrationWorkflows:
         mock_manager = complete_mock_setup
         mock_manager.is_connected.return_value = False  # Neo4j nicht verfügbar
 
-        with patch('src.governance.data_governance.Neo4jTemplateManager', return_value=mock_manager):
+        with patch(
+            "src.governance.data_governance.Neo4jTemplateManager", return_value=mock_manager
+        ):
             engine = DataGovernanceEngine()
 
             # Sollte auf lokale Templates zurückfallen
@@ -550,6 +549,7 @@ class TestNeo4jIntegrationWorkflows:
 
             # Neo4j-spezifische Methoden sollten nicht aufgerufen werden
             mock_manager.get_templates_for_project.assert_not_called()
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

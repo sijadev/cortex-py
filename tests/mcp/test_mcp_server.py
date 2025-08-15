@@ -42,6 +42,7 @@ try:
         EmbeddedResource,
         ServerCapabilities,
     )
+
     MCP_AVAILABLE = True
 except ImportError:
     MCP_AVAILABLE = False
@@ -60,32 +61,31 @@ try:
 except Exception:
     MCP_SERVER_AVAILABLE = False
 
+
 # Test-Hilfsfunktionen
 def get_project_root():
     """Gibt das Projekt-Root-Verzeichnis zurück."""
-    return Path(__file__).resolve().parent.parent.parent  # Go up two levels now (mcp -> tests -> project)
+    return (
+        Path(__file__).resolve().parent.parent.parent
+    )  # Go up two levels now (mcp -> tests -> project)
+
 
 def run_mcp_server_command(command, timeout=10):
     """Führt einen MCP Server Befehl aus (unified version)."""
     project_root = get_project_root()
     env = os.environ.copy()
-    env['PYTHONPATH'] = str(project_root)
+    env["PYTHONPATH"] = str(project_root)
 
     # Use the unified MCP server path
     mcp_server_paths = [
         [sys.executable, "-m", "src.mcp.cortex_mcp_server"] + command,
-        [sys.executable, str(project_root / "src" / "mcp" / "cortex_mcp_server.py")] + command
+        [sys.executable, str(project_root / "src" / "mcp" / "cortex_mcp_server.py")] + command,
     ]
 
     for cmd in mcp_server_paths:
         try:
             result = subprocess.run(
-                cmd,
-                cwd=project_root,
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=timeout
+                cmd, cwd=project_root, env=env, capture_output=True, text=True, timeout=timeout
             )
             # Wenn der Befehl erfolgreich war, gib das Ergebnis zurück
             if result.returncode == 0:
@@ -98,6 +98,7 @@ def run_mcp_server_command(command, timeout=10):
     # Test direct import with unified server
     try:
         import src.mcp.cortex_mcp_server
+
         # Wenn der Import funktioniert, erstelle ein Mock-Ergebnis
         mock_result = subprocess.CompletedProcess(
             args=command, returncode=0, stdout="Unified MCP Server import successful", stderr=""
@@ -108,8 +109,12 @@ def run_mcp_server_command(command, timeout=10):
 
     return None
 
+
 # Tests - Korrigierte Versionen die unsere eigene Implementierung verwenden
-@pytest.mark.skipif(not (MCP_AVAILABLE or MCP_SERVER_AVAILABLE), reason="Neither MCP library nor Cortex MCP server available")
+@pytest.mark.skipif(
+    not (MCP_AVAILABLE or MCP_SERVER_AVAILABLE),
+    reason="Neither MCP library nor Cortex MCP server available",
+)
 class TestMCPServer:
     """Test-Klasse für MCP Server Funktionalität."""
 
@@ -118,8 +123,8 @@ class TestMCPServer:
         if MCP_SERVER_AVAILABLE:
             # Test mit unserer eigenen Implementierung
             assert cortex_mcp_server is not None, "Cortex MCP server should be available"
-            assert hasattr(cortex_mcp_server, 'main'), "Server should have main function"
-            assert hasattr(cortex_mcp_server, 'server'), "Server instance should be available"
+            assert hasattr(cortex_mcp_server, "main"), "Server should have main function"
+            assert hasattr(cortex_mcp_server, "server"), "Server instance should be available"
             print("✅ Cortex MCP Server erfolgreich initialisiert")
         elif MCP_AVAILABLE:
             # Fallback auf externe MCP Library
@@ -133,14 +138,14 @@ class TestMCPServer:
         """Test der Ressourcen-Auflistung."""
         if MCP_SERVER_AVAILABLE:
             # Test mit unserer eigenen Implementierung
-            if hasattr(cortex_mcp_server, 'handle_list_resources'):
+            if hasattr(cortex_mcp_server, "handle_list_resources"):
                 resources = await cortex_mcp_server.handle_list_resources()
                 assert isinstance(resources, list), "Resources should be a list"
                 if len(resources) > 0:
                     # Prüfe erste Ressource
                     resource = resources[0]
-                    assert hasattr(resource, 'name'), "Resource should have name"
-                    assert hasattr(resource, 'uri'), "Resource should have uri"
+                    assert hasattr(resource, "name"), "Resource should have name"
+                    assert hasattr(resource, "uri"), "Resource should have uri"
                 print(f"✅ {len(resources)} Ressourcen gefunden")
             else:
                 pytest.skip("handle_list_resources not available in server")
@@ -151,7 +156,7 @@ class TestMCPServer:
                     uri="file://test.md",
                     name="Test Resource",
                     description="A test resource",
-                    mimeType="text/markdown"
+                    mimeType="text/markdown",
                 )
             ]
             assert len(mock_resources) == 1
@@ -164,14 +169,14 @@ class TestMCPServer:
         """Test der Tool-Auflistung."""
         if MCP_SERVER_AVAILABLE:
             # Test mit unserer eigenen Implementierung
-            if hasattr(cortex_mcp_server, 'handle_list_tools'):
+            if hasattr(cortex_mcp_server, "handle_list_tools"):
                 tools = await cortex_mcp_server.handle_list_tools()
                 assert isinstance(tools, list), "Tools should be a list"
                 if len(tools) > 0:
                     # Prüfe erstes Tool
                     tool = tools[0]
-                    assert hasattr(tool, 'name'), "Tool should have name"
-                    assert hasattr(tool, 'description'), "Tool should have description"
+                    assert hasattr(tool, "name"), "Tool should have name"
+                    assert hasattr(tool, "description"), "Tool should have description"
                 print(f"✅ {len(tools)} Tools gefunden")
             else:
                 pytest.skip("handle_list_tools not available in server")
@@ -189,12 +194,15 @@ class TestMCPServer:
                 # Direkter Test der main Funktion
                 try:
                     # Test ob main-Funktion existiert und aufrufbar ist
-                    assert callable(getattr(cortex_mcp_server, 'main', None)), "main should be callable"
+                    assert callable(
+                        getattr(cortex_mcp_server, "main", None)
+                    ), "main should be callable"
                     print("✅ MCP Server main function accessible")
                 except Exception as e:
                     pytest.skip(f"MCP server main function test failed: {e}")
         else:
             pytest.skip("Cortex MCP server not available")
+
 
 # Fallback-Tests für den Fall dass MCP nicht verfügbar ist
 class TestMCPServerFallback:
@@ -219,6 +227,7 @@ class TestMCPServerFallback:
                     EmbeddedResource,
                     ServerCapabilities,
                 )
+
                 assert True, "MCP modules are properly available and importable"
             except ImportError as e:
                 pytest.fail(f"MCP availability check failed: {e}")
@@ -226,8 +235,13 @@ class TestMCPServerFallback:
             # Verify our unified MCP server can be imported
             try:
                 import src.mcp.cortex_mcp_server
-                assert hasattr(src.mcp.cortex_mcp_server, 'server'), "MCP server should be available"
-                assert hasattr(src.mcp.cortex_mcp_server, 'main'), "MCP main function should be available"
+
+                assert hasattr(
+                    src.mcp.cortex_mcp_server, "server"
+                ), "MCP server should be available"
+                assert hasattr(
+                    src.mcp.cortex_mcp_server, "main"
+                ), "MCP main function should be available"
                 print("✅ MCP is properly configured and all components are available")
             except ImportError as e:
                 pytest.fail(f"Unified MCP server import failed: {e}")
@@ -237,6 +251,7 @@ class TestMCPServerFallback:
         # Original fallback test code for when MCP is not available
         assert not MCP_AVAILABLE
         print("INFO: MCP modules not available - tests will be skipped")
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

@@ -7,6 +7,7 @@ Konfiguriert das System für die neue Neo4j-Datenbank
 import os
 from data_governance import DataGovernanceEngine, Neo4jTemplateManager
 
+
 class CortexSystemConfig:
     """Konfiguration für das neue cortex-system"""
 
@@ -20,9 +21,7 @@ class CortexSystemConfig:
         """Erstellt eine DataGovernanceEngine für das cortex-system"""
         # Erstelle Template Manager mit cortex-system Konfiguration
         template_manager = Neo4jTemplateManager(
-            uri=self.neo4j_uri,
-            user=self.neo4j_user,
-            password=self.neo4j_password
+            uri=self.neo4j_uri, user=self.neo4j_user, password=self.neo4j_password
         )
 
         # Erstelle Governance Engine
@@ -37,37 +36,37 @@ class CortexSystemConfig:
         # Cortex-spezifische Templates
         cortex_templates = [
             {
-                'name': 'Cortex Knowledge Base Entry',
-                'project_type': 'knowledge',
-                'required_sections': ['concept', 'explanation', 'examples', 'relationships'],
-                'suggested_tags': ['knowledge', 'cortex', 'learning'],
-                'workflow_step': 'knowledge_capture',
-                'keywords': ['knowledge', 'learning', 'concept']
+                "name": "Cortex Knowledge Base Entry",
+                "project_type": "knowledge",
+                "required_sections": ["concept", "explanation", "examples", "relationships"],
+                "suggested_tags": ["knowledge", "cortex", "learning"],
+                "workflow_step": "knowledge_capture",
+                "keywords": ["knowledge", "learning", "concept"],
             },
             {
-                'name': 'Cortex Analysis Report',
-                'project_type': 'analysis',
-                'required_sections': ['objective', 'methodology', 'findings', 'recommendations'],
-                'suggested_tags': ['analysis', 'report', 'insights'],
-                'workflow_step': 'analysis',
-                'keywords': ['analysis', 'data', 'insights']
+                "name": "Cortex Analysis Report",
+                "project_type": "analysis",
+                "required_sections": ["objective", "methodology", "findings", "recommendations"],
+                "suggested_tags": ["analysis", "report", "insights"],
+                "workflow_step": "analysis",
+                "keywords": ["analysis", "data", "insights"],
             },
             {
-                'name': 'Cortex Development Task',
-                'project_type': 'development',
-                'required_sections': ['requirements', 'implementation', 'testing', 'deployment'],
-                'suggested_tags': ['development', 'task', 'implementation'],
-                'workflow_step': 'development',
-                'keywords': ['development', 'implementation', 'code']
+                "name": "Cortex Development Task",
+                "project_type": "development",
+                "required_sections": ["requirements", "implementation", "testing", "deployment"],
+                "suggested_tags": ["development", "task", "implementation"],
+                "workflow_step": "development",
+                "keywords": ["development", "implementation", "code"],
             },
             {
-                'name': 'Cortex Research Project',
-                'project_type': 'research',
-                'required_sections': ['hypothesis', 'methodology', 'experiments', 'conclusions'],
-                'suggested_tags': ['research', 'investigation', 'discovery'],
-                'workflow_step': 'research',
-                'keywords': ['research', 'hypothesis', 'experiment']
-            }
+                "name": "Cortex Research Project",
+                "project_type": "research",
+                "required_sections": ["hypothesis", "methodology", "experiments", "conclusions"],
+                "suggested_tags": ["research", "investigation", "discovery"],
+                "workflow_step": "research",
+                "keywords": ["research", "hypothesis", "experiment"],
+            },
         ]
 
         # Templates im System registrieren
@@ -75,21 +74,21 @@ class CortexSystemConfig:
             if engine.neo4j_manager.is_connected():
                 # Versuche Template in Neo4j zu erstellen
                 engine.neo4j_manager.create_template_if_missing(
-                    template_config['project_type'],
-                    template_config['name'],
-                    template_config['keywords']
+                    template_config["project_type"],
+                    template_config["name"],
+                    template_config["keywords"],
                 )
 
             # Auch lokal registrieren als Fallback
             engine.add_template(
-                name=template_config['name'],
-                required_sections=template_config['required_sections'],
-                suggested_tags=template_config['suggested_tags'],
-                workflow_step=template_config['workflow_step'],
+                name=template_config["name"],
+                required_sections=template_config["required_sections"],
+                suggested_tags=template_config["suggested_tags"],
+                workflow_step=template_config["workflow_step"],
                 content_standards={
-                    'min_length': 200,
-                    'required_keywords': template_config['keywords']
-                }
+                    "min_length": 200,
+                    "required_keywords": template_config["keywords"],
+                },
             )
 
     def setup_cortex_system_workflows(self, engine):
@@ -97,32 +96,33 @@ class CortexSystemConfig:
 
         cortex_workflows = [
             {
-                'name': 'Cortex Knowledge Management',
-                'steps': ['Capture', 'Structure', 'Validate', 'Integrate', 'Share'],
-                'templates': ['Cortex Knowledge Base Entry'],
-                'auto_assign': True
+                "name": "Cortex Knowledge Management",
+                "steps": ["Capture", "Structure", "Validate", "Integrate", "Share"],
+                "templates": ["Cortex Knowledge Base Entry"],
+                "auto_assign": True,
             },
             {
-                'name': 'Cortex Research & Development',
-                'steps': ['Research', 'Design', 'Prototype', 'Test', 'Deploy'],
-                'templates': ['Cortex Research Project', 'Cortex Development Task'],
-                'auto_assign': True
+                "name": "Cortex Research & Development",
+                "steps": ["Research", "Design", "Prototype", "Test", "Deploy"],
+                "templates": ["Cortex Research Project", "Cortex Development Task"],
+                "auto_assign": True,
             },
             {
-                'name': 'Cortex Analysis Pipeline',
-                'steps': ['Data Collection', 'Processing', 'Analysis', 'Reporting', 'Action'],
-                'templates': ['Cortex Analysis Report'],
-                'auto_assign': True
-            }
+                "name": "Cortex Analysis Pipeline",
+                "steps": ["Data Collection", "Processing", "Analysis", "Reporting", "Action"],
+                "templates": ["Cortex Analysis Report"],
+                "auto_assign": True,
+            },
         ]
 
         for workflow_config in cortex_workflows:
             engine.add_workflow(
-                name=workflow_config['name'],
-                steps=workflow_config['steps'],
-                templates=workflow_config['templates'],
-                auto_assign=workflow_config['auto_assign']
+                name=workflow_config["name"],
+                steps=workflow_config["steps"],
+                templates=workflow_config["templates"],
+                auto_assign=workflow_config["auto_assign"],
             )
+
 
 def initialize_cortex_system():
     """Initialisiert das komplette cortex-system"""
@@ -149,7 +149,7 @@ def initialize_cortex_system():
         content="This is a test knowledge entry about machine learning concepts in artificial intelligence development. It covers the fundamental understanding of neural networks and their implementation in modern software systems.",
         description="Test entry for cortex system validation",
         project_type="knowledge",
-        project_name="Cortex System Test"
+        project_name="Cortex System Test",
     )
 
     print(f"Test Result: {'✅ Passed' if test_result.passed else '❌ Failed'}")
@@ -159,6 +159,7 @@ def initialize_cortex_system():
         print("Suggestions:", test_result.suggestions[:2])  # Zeige nur erste 2
 
     return engine
+
 
 if __name__ == "__main__":
     # Initialisiere das cortex-system

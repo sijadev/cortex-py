@@ -14,17 +14,14 @@ from unittest.mock import Mock, patch
 project_root = Path(__file__).parent.parent.parent  # Go up two levels now (mcp -> tests -> project)
 sys.path.insert(0, str(project_root))
 
+
 class TestMCPSetup:
     """Tests für MCP Setup und Konfiguration."""
 
     def test_project_structure(self):
         """Test dass die grundlegende Projektstruktur existiert."""
         # Wichtige Verzeichnisse
-        important_dirs = [
-            "src",
-            "scripts",
-            "config"
-        ]
+        important_dirs = ["src", "scripts", "config"]
 
         existing_dirs = []
         for dirname in important_dirs:
@@ -59,7 +56,7 @@ class TestMCPSetup:
         if claude_config.exists():
             # Prüfe ob es valides JSON ist
             try:
-                with open(claude_config, 'r') as f:
+                with open(claude_config, "r") as f:
                     config_data = json.load(f)
                 assert isinstance(config_data, dict)
             except json.JSONDecodeError:
@@ -67,12 +64,14 @@ class TestMCPSetup:
         else:
             pytest.skip("Claude Desktop Konfiguration nicht gefunden")
 
+
 class TestMCPDependencies:
     """Tests für MCP Abhängigkeiten."""
 
     def test_python_version(self):
         """Test dass Python Version ausreichend ist."""
         import sys
+
         version = sys.version_info
 
         # MCP benötigt Python 3.8+
@@ -81,12 +80,7 @@ class TestMCPDependencies:
     def test_required_packages_importable(self):
         """Test dass erforderliche Pakete importierbar sind."""
         # Basis-Pakete die immer verfügbar sein sollten
-        basic_packages = [
-            "json",
-            "asyncio",
-            "pathlib",
-            "subprocess"
-        ]
+        basic_packages = ["json", "asyncio", "pathlib", "subprocess"]
 
         for package in basic_packages:
             try:
@@ -95,11 +89,7 @@ class TestMCPDependencies:
                 pytest.fail(f"Basis-Paket nicht verfügbar: {package}")
 
         # Optionale MCP-Pakete
-        optional_packages = [
-            "mcp",
-            "mcp.server",
-            "mcp.types"
-        ]
+        optional_packages = ["mcp", "mcp.server", "mcp.types"]
 
         available_optional = []
         for package in optional_packages:
@@ -111,7 +101,9 @@ class TestMCPDependencies:
 
         # Bewerte MCP-Installation - erlaubt auch teilweise Installation
         if len(available_optional) == 0:
-            pytest.skip("MCP nicht installiert - Installation erforderlich für volle Funktionalität")
+            pytest.skip(
+                "MCP nicht installiert - Installation erforderlich für volle Funktionalität"
+            )
         elif len(available_optional) == 1 and "mcp" in available_optional:
             # Nur Basis-MCP verfügbar - das ist in Ordnung für Entwicklung
             assert True, "MCP Basis-Modul verfügbar"
@@ -121,6 +113,7 @@ class TestMCPDependencies:
         else:
             # Unvollständige aber verwendbare Installation
             assert True, f"MCP teilweise installiert: {available_optional}"
+
 
 class TestMCPEnvironment:
     """Tests für MCP Umgebung."""
@@ -153,6 +146,7 @@ class TestMCPEnvironment:
             # Versuche ein Projekt-Modul zu importieren
             try:
                 import src
+
                 assert True
             except ImportError:
                 pytest.skip("Projekt-Module nicht importierbar")
@@ -160,6 +154,7 @@ class TestMCPEnvironment:
         finally:
             # Restore original path
             sys.path[:] = original_path
+
 
 class TestMCPDocumentation:
     """Tests für MCP Dokumentation."""
@@ -172,10 +167,7 @@ class TestMCPDocumentation:
             pytest.skip("Docs directory does not exist")
 
         # Suche nach MCP-bezogener Dokumentation
-        mcp_docs = [
-            "MCP_SETUP_ANLEITUNG.md",
-            "README_MCP.md"
-        ]
+        mcp_docs = ["MCP_SETUP_ANLEITUNG.md", "README_MCP.md"]
 
         existing_docs = []
         for doc in mcp_docs:
@@ -190,6 +182,7 @@ class TestMCPDocumentation:
                 assert doc_path.stat().st_size > 500, f"Dokumentation zu kurz: {doc}"
         else:
             pytest.skip("Keine MCP-Dokumentation gefunden")
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

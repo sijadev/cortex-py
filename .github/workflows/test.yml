@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.9, 3.10, 3.11, 3.12]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
 
     steps:
     - uses: actions/checkout@v4
@@ -50,12 +50,14 @@ jobs:
         # Set environment variables for tests
         export PYTHONPATH="${PYTHONPATH}:$(pwd):$(pwd)/src"
         export NEO4J_DISABLED=1  # Disable Neo4j for CI tests
+        export CI=1  # Set CI flag to prevent browser opening
         echo "PYTHONPATH=${PYTHONPATH}:$(pwd):$(pwd)/src" >> $GITHUB_ENV
         echo "NEO4J_DISABLED=1" >> $GITHUB_ENV
+        echo "CI=1" >> $GITHUB_ENV
 
     - name: Run all tests with coverage
       run: |
-        python run_tests.py
+        python -m pytest tests/ --tb=short -v --cov=src --cov-report=xml --cov-report=html --maxfail=5
 
     - name: Upload test results
       uses: actions/upload-artifact@v3
@@ -65,13 +67,14 @@ jobs:
         path: |
           tests/reports/
           logs/tests/
+          htmlcov/
         retention-days: 30
 
     - name: Upload coverage reports to Codecov
       if: matrix.python-version == '3.12'
       uses: codecov/codecov-action@v3
       with:
-        file: tests/reports/coverage/coverage.xml
+        file: coverage.xml
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
@@ -119,10 +122,12 @@ jobs:
         export NEO4J_URI=bolt://localhost:7687
         export NEO4J_USER=neo4j
         export NEO4J_PASSWORD=testpassword
+        export CI=1
         echo "PYTHONPATH=${PYTHONPATH}:$(pwd):$(pwd)/src" >> $GITHUB_ENV
         echo "NEO4J_URI=bolt://localhost:7687" >> $GITHUB_ENV
         echo "NEO4J_USER=neo4j" >> $GITHUB_ENV
         echo "NEO4J_PASSWORD=testpassword" >> $GITHUB_ENV
+        echo "CI=1" >> $GITHUB_ENV
 
     - name: Run Neo4j integration tests
       run: |
@@ -141,15 +146,32 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Run Bandit Security Scan
-      uses: securecodewarrior/github-action-bandit@v1.0.1
+    - name: Set up Python
+      uses: actions/setup-python@v4
       with:
-        path: "src"
+        python-version: 3.12
+
+    - name: Install security tools
+      run: |
+        pip install bandit safety
+
+    - name: Run Bandit Security Scan
+      run: |
+        bandit -r src -f json -o security-report.json || true
 
     - name: Run Safety Check
       run: |
-        pip install safety
-        safety check --json || true
+        safety check --json --output safety-report.json || true
+
+    - name: Upload security scan results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-scan-results
+        path: |
+          security-report.json
+          safety-report.json
+        retention-days: 30
 
   code-quality:
     runs-on: ubuntu-latest
