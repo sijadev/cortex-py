@@ -1,6 +1,5 @@
 # Cortex-py Dependencies
-# MCP Server
-mcp>=1.0.0
+# Note: MCP is installed separately - see docs/MCP_SETUP_ANLEITUNG.md
 
 # Neo4j Database
 neo4j>=5.0.0
@@ -21,3 +20,8 @@ python-dotenv>=1.0.0
 # Additional utilities
 aiofiles>=23.0.0
 asyncio-mqtt>=0.13.0
+
+# Optional MCP dependencies (for when MCP is available)
+# These are commonly needed with MCP but can be installed independently
+httpx>=0.24.0
+anyio>=3.6.0
