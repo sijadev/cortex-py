@@ -452,6 +452,7 @@ class DataGovernanceEngine:
                 "auto_suggest_templates": True,
                 "auto_suggest_workflow_steps": True,
                 "auto_suggest_tags": True,
+                "validation_level": "warning",  # STRICT, WARNING, or LENIENT
             },
         }
 
@@ -725,15 +726,22 @@ class DataGovernanceEngine:
         # Validierungsregeln aus Konfiguration laden
         rules = self.config.get("validation_rules", {})
 
+        # **WICHTIG: Validation Level aus Konfiguration lesen**
+        validation_level_str = rules.get("validation_level", "warning")
+        try:
+            validation_level = ValidationLevel(validation_level_str.lower())
+        except ValueError:
+            validation_level = ValidationLevel.WARNING
+
         # 1. Basis-Validierungen mit konfigurierbaren Regeln
-        self._validate_required_fields(result, name, content, description, rules)
-        self._validate_naming_conventions(result, name)
-        self._validate_content_quality(result, content)
+        self._validate_required_fields(result, name, content, description, rules, validation_level)
+        self._validate_naming_conventions(result, name, validation_level)
+        self._validate_content_quality(result, content, validation_level)
 
         # 2. Template-Validierung (dynamisch)
         templates = self.get_templates()
         if template and template in templates:
-            self._validate_template_compliance(result, content, template, templates[template])
+            self._validate_template_compliance(result, content, template, templates[template], validation_level)
         elif rules.get("auto_suggest_templates", True):
             suggested_template = self._suggest_template_dynamic(content, note_type, templates)
             if suggested_template:
@@ -746,98 +754,167 @@ class DataGovernanceEngine:
             if suggested_step:
                 result.suggestions.append(f"Empfohlener Workflow-Step: {suggested_step}")
 
-        # 4. Tag-Suggestions (dynamisch)
+        # 4. Tag-Suggestions (enhanced with performance tags)
         if rules.get("auto_suggest_tags", True):
-            suggested_tags = self._suggest_tags_dynamic(content, note_type, template, templates)
-            if suggested_tags:
-                result.suggestions.append(f"Empfohlene Tags: {', '.join(suggested_tags)}")
+            # Use the enhanced _suggest_tags method that includes performance tags
+            suggested_tags = self._suggest_tags(content, note_type, template)
+
+            # Also add dynamic template-based tags
+            dynamic_tags = self._suggest_tags_dynamic(content, note_type, template, templates)
+
+            # Combine all tags, removing duplicates
+            if suggested_tags or dynamic_tags:
+                all_tags = list(set(suggested_tags + dynamic_tags))
+                if all_tags:
+                    result.suggestions.append(f"Empfohlene Tags: {', '.join(all_tags)}")
 
         # 5. Duplikat-Warnung (konfigurierbar)
         if self._check_potential_duplicate_dynamic(name, rules.get("duplicate_threshold", 0.7)):
-            result.warnings.append(f"Ähnlicher Name bereits vorhanden")
+            duplicate_message = f"Ähnlicher Name bereits vorhanden"
+            if validation_level == ValidationLevel.STRICT:
+                result.errors.append(duplicate_message)
+            else:
+                result.warnings.append(duplicate_message)
 
-        # Bestimme Gesamtergebnis
-        result.passed = len(result.errors) == 0
+        # **VALIDATION LEVEL ENFORCEMENT - Das war das fehlende Stück!**
+        if validation_level == ValidationLevel.STRICT:
+            # Im STRICT Modus: Alle Errors und kritische Warnings blockieren
+            result.passed = len(result.errors) == 0
+        elif validation_level == ValidationLevel.WARNING:
+            # Im WARNING Modus: Nur schwere Errors blockieren
+            critical_errors = [e for e in result.errors if "muss mindestens" in e or "darf nicht leer" in e]
+            result.passed = len(critical_errors) == 0
+        elif validation_level == ValidationLevel.LENIENT:
+            # Im LENIENT Modus: Fast alles durchlassen, nur komplett ungültige Daten blockieren
+            blocking_errors = [e for e in result.errors if "darf nicht leer" in e or "darf nicht None" in e]
+            result.passed = len(blocking_errors) == 0
 
         return result
 
     def _validate_required_fields(
-        self, result: ValidationResult, name: str, content: str, description: str, rules: dict
+        self, result: ValidationResult, name: str, content: str, description: str, rules: dict, validation_level: ValidationLevel
     ):
-        """Validiert Pflichtfelder."""
+        """Validiert Pflichtfelder mit Validation Level Enforcement."""
+        # Name validation
         if not name or len(name.strip()) < rules.get("name_min_length", 3):
-            result.errors.append(
-                f"Name muss mindestens {rules.get('name_min_length')} Zeichen haben"
-            )
+            message = f"Name muss mindestens {rules.get('name_min_length', 3)} Zeichen haben"
+            if validation_level == ValidationLevel.STRICT:
+                result.errors.append(message)
+            elif validation_level == ValidationLevel.WARNING:
+                result.warnings.append(message)
+            # In LENIENT mode, only add as suggestion
 
+        # Content validation
         if not content or len(content.strip()) < rules.get("content_min_length", 20):
-            result.errors.append(
-                f"Content muss mindestens {rules.get('content_min_length')} Zeichen haben"
-            )
+            message = f"Content muss mindestens {rules.get('content_min_length', 20)} Zeichen haben"
+            if validation_level == ValidationLevel.STRICT:
+                result.errors.append(message)
+            elif validation_level == ValidationLevel.WARNING:
+                result.errors.append(message)  # Content length is critical even in WARNING mode
+            else:  # LENIENT
+                result.warnings.append(message)
 
+        # Description validation
         if not description or len(description.strip()) < rules.get("description_min_length", 10):
-            result.warnings.append(
-                f"Beschreibung sollte mindestens {rules.get('description_min_length')} Zeichen haben"
-            )
+            message = f"Beschreibung sollte mindestens {rules.get('description_min_length', 10)} Zeichen haben"
+            if validation_level == ValidationLevel.STRICT:
+                result.errors.append(message)
+            else:
+                result.warnings.append(message)
 
-    def _validate_naming_conventions(self, result: ValidationResult, name: str):
-        """Validiert Namenskonventionen."""
+    def _validate_naming_conventions(self, result: ValidationResult, name: str, validation_level: ValidationLevel):
+        """Validiert Namenskonventionen mit Validation Level Enforcement."""
         # Prüfe auf None oder leeren Namen
         if name is None or name == "":
-            result.errors.append("Name darf nicht leer oder None sein")
+            message = "Name darf nicht leer oder None sein"
+            result.errors.append(message)  # This is always an error regardless of level
             return
 
         # Keine Sonderzeichen außer Leerzeichen, Bindestriche
         if not re.match(r"^[a-zA-Z0-9\s\-\.]+$", name):
-            result.errors.append("Name enthält ungültige Zeichen")
+            message = "Name enthält ungültige Zeichen"
+            if validation_level == ValidationLevel.STRICT:
+                result.errors.append(message)
+            elif validation_level == ValidationLevel.WARNING:
+                result.warnings.append(message)
+            # In LENIENT mode, ignore this
 
         # Keine generischen Namen
         generic_names = ["test", "note", "example", "temp", "new"]
         if name.lower().strip() in generic_names:
-            result.warnings.append(f"Generischer Name '{name}' - bitte spezifischer")
+            message = f"Generischer Name '{name}' - bitte spezifischer"
+            if validation_level == ValidationLevel.STRICT:
+                result.errors.append(message)
+            else:
+                result.warnings.append(message)
 
-    def _validate_content_quality(self, result: ValidationResult, content: str):
-        """Validiert Content-Qualität."""
+    def _validate_content_quality(self, result: ValidationResult, content: str, validation_level: ValidationLevel):
+        """Validiert Content-Qualität mit Validation Level Enforcement."""
         # Prüfe auf None oder leeren Content
         if content is None:
-            result.errors.append("Content darf nicht None sein")
+            result.errors.append("Content darf nicht None sein")  # Always an error
             return
 
         if len(content) < 100:
-            result.warnings.append("Content ist sehr kurz - mehr Details empfohlen")
+            message = "Content ist sehr kurz - mehr Details empfohlen"
+            if validation_level == ValidationLevel.STRICT:
+                result.warnings.append(message)
+            elif validation_level == ValidationLevel.WARNING:
+                result.suggestions.append(message)
+            # In LENIENT mode, ignore this
 
         # Prüfe auf Markdown-Struktur
         if not any(marker in content for marker in ["#", "**", "*", "-", "1."]):
-            result.suggestions.append("Strukturierung mit Markdown empfohlen")
+            message = "Strukturierung mit Markdown empfohlen"
+            if validation_level == ValidationLevel.STRICT:
+                result.warnings.append(message)
+            else:
+                result.suggestions.append(message)
 
         # Prüfe auf Code-Blöcke bei Code-Content
         if "def " in content or "class " in content or "import " in content:
             if "```" not in content:
-                result.warnings.append("Code sollte in Markdown-Code-Blöcken (```) stehen")
+                message = "Code sollte in Markdown-Code-Blöcken (```) stehen"
+                if validation_level == ValidationLevel.STRICT:
+                    result.warnings.append(message)
+                else:
+                    result.suggestions.append(message)
 
     def _validate_template_compliance(
-        self, result: ValidationResult, content: str, template: str, template_rules: dict
+        self, result: ValidationResult, content: str, template: str, template_rules: dict, validation_level: ValidationLevel
     ):
-        """Validiert Template-Konformität."""
-        # Verwende get_templates() statt self.templates
+        """Validiert Template-Konformität mit Validation Level Enforcement."""
         templates = self.get_templates()
         if template in templates:
             # Prüfe required sections
             for section in template_rules["required_sections"]:
                 if section.lower() not in content.lower():
-                    result.warnings.append(f"Template-Sektion '{section}' fehlt")
+                    message = f"Template-Sektion '{section}' fehlt"
+                    if validation_level == ValidationLevel.STRICT:
+                        result.errors.append(message)
+                    else:
+                        result.warnings.append(message)
 
             # Prüfe Content-Standards
             min_length = template_rules.get("content_standards", {}).get("min_length", 0)
             if len(content) < min_length:
-                result.warnings.append(f"Content sollte mindestens {min_length} Zeichen lang sein")
+                message = f"Content sollte mindestens {min_length} Zeichen lang sein"
+                if validation_level == ValidationLevel.STRICT:
+                    result.errors.append(message)
+                else:
+                    result.warnings.append(message)
 
             required_keywords = template_rules.get("content_standards", {}).get(
                 "required_keywords", []
             )
             for keyword in required_keywords:
                 if keyword.lower() not in content.lower():
-                    result.errors.append(f"Keyword '{keyword}' fehlt im Content")
+                    message = f"Keyword '{keyword}' fehlt im Content"
+                    if validation_level == ValidationLevel.STRICT:
+                        result.errors.append(message)
+                    elif validation_level == ValidationLevel.WARNING:
+                        result.warnings.append(message)
+                    # In LENIENT mode, ignore missing keywords
 
     def _suggest_template(self, content: str, note_type: str) -> Optional[str]:
         """Schlägt Template basierend auf Content vor."""
@@ -906,6 +983,11 @@ class DataGovernanceEngine:
     def _suggest_tags(self, content: str, note_type: str, template: str) -> List[str]:
         """Schlägt Tags basierend auf Content-Analyse vor."""
         tags = set()
+
+        # Null-safety check for content
+        if content is None:
+            return []
+
         content_lower = content.lower()
 
         # Basis-Tags
@@ -926,6 +1008,19 @@ class DataGovernanceEngine:
         if any(ml in content_lower for ml in ["tensorflow", "pytorch", "machine learning", "ml"]):
             tags.add("machine-learning")
             tags.add("data-science")
+
+        # Performance-Tags (NEW)
+        # Performance Metrics
+        if any(metric in content_lower for metric in ["performance", "benchmark", "timing", "metrics", "measurement", "profiling", "monitoring", "statistics", "latency", "throughput", "response time"]):
+            tags.add("performance-metrics")
+
+        # System Optimization
+        if any(opt in content_lower for opt in ["optimization", "optimize", "performance tuning", "efficiency", "speed up", "memory usage", "cpu usage", "database optimization", "query optimization", "caching", "scaling"]):
+            tags.add("system-optimization")
+
+        # Command Tracking
+        if any(cmd in content_lower for cmd in ["command", "execution", "tracking", "monitoring", "logging", "audit", "history", "terminal", "shell", "cli", "script execution", "process monitoring"]):
+            tags.add("command-tracking")
 
         # Type-based Tags
         if note_type:

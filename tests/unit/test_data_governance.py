@@ -511,6 +511,534 @@ class TestEdgeCases:
         assert isinstance(result, ValidationResult)
 
 
+class TestValidationLevels:
+    """Tests für die neuen Validierungsebenen STRICT, WARNING, LENIENT"""
+
+    @pytest.fixture
+    def governance_engine_strict(self):
+        """Erstellt eine DataGovernanceEngine mit STRICT Validierung"""
+        engine = DataGovernanceEngine()
+        engine.update_validation_rules({"validation_level": "strict"})
+        return engine
+
+    @pytest.fixture
+    def governance_engine_warning(self):
+        """Erstellt eine DataGovernanceEngine mit WARNING Validierung"""
+        engine = DataGovernanceEngine()
+        engine.update_validation_rules({"validation_level": "warning"})
+        return engine
+
+    @pytest.fixture
+    def governance_engine_lenient(self):
+        """Erstellt eine DataGovernanceEngine mit LENIENT Validierung"""
+        engine = DataGovernanceEngine()
+        engine.update_validation_rules({"validation_level": "lenient"})
+        return engine
+
+    def test_strict_mode_blocks_short_name(self, governance_engine_strict):
+        """Test: STRICT Modus blockiert kurze Namen"""
+        result = governance_engine_strict.validate_note_creation(
+            name="x",  # Zu kurz
+            content="Valid content with sufficient length for validation testing",
+            description="Valid description",
+            note_type="test"
+        )
+
+        assert result.passed == False
+        assert any("Name muss mindestens" in error for error in result.errors)
+
+    def test_warning_mode_allows_short_name_with_warning(self, governance_engine_warning):
+        """Test: WARNING Modus erlaubt kurze Namen mit Warnung"""
+        result = governance_engine_warning.validate_note_creation(
+            name="x",  # Zu kurz
+            content="Valid content with sufficient length for validation testing",
+            description="Valid description",
+            note_type="test"
+        )
+
+        # Should pass in WARNING mode for non-critical issues
+        assert result.passed == True
+        assert any("Name muss mindestens" in warning for warning in result.warnings)
+
+    def test_lenient_mode_allows_most_issues(self, governance_engine_lenient):
+        """Test: LENIENT Modus lässt fast alles durch"""
+        result = governance_engine_lenient.validate_note_creation(
+            name="x",  # Zu kurz
+            content="short",  # Zu kurz
+            description="ok",  # Zu kurz
+            note_type="test"
+        )
+
+        # Only completely invalid data should fail in LENIENT mode
+        assert result.passed == True
+        assert len(result.errors) == 0 or all("darf nicht None" in error for error in result.errors)
+
+    def test_strict_mode_enforces_template_compliance(self, governance_engine_strict):
+        """Test: STRICT Modus erzwingt Template-Konformität"""
+        result = governance_engine_strict.validate_note_creation(
+            name="Python Framework Test",
+            content="This is content without required sections and keywords",
+            description="Test description",
+            note_type="framework",
+            template="Python Framework"
+        )
+
+        assert result.passed == False
+        assert any("Template-Sektion" in error or "Keyword" in error for error in result.errors)
+
+    def test_warning_mode_template_warnings(self, governance_engine_warning):
+        """Test: WARNING Modus zeigt Template-Warnungen"""
+        result = governance_engine_warning.validate_note_creation(
+            name="Python Framework Test",
+            content="This is content without required sections and keywords",
+            description="Test description",
+            note_type="framework",
+            template="Python Framework"
+        )
+
+        # May pass but should have warnings about template compliance
+        assert len(result.warnings) > 0
+
+    def test_lenient_mode_ignores_template_issues(self, governance_engine_lenient):
+        """Test: LENIENT Modus ignoriert Template-Probleme"""
+        result = governance_engine_lenient.validate_note_creation(
+            name="Python Framework Test",
+            content="This is content without required sections and keywords",
+            description="Test description",
+            note_type="framework",
+            template="Python Framework"
+        )
+
+        # Should pass with minimal issues in LENIENT mode
+        assert result.passed == True
+
+    def test_validation_level_from_config(self):
+        """Test: Validierungsebene aus Konfiguration laden"""
+        # Test mit STRICT Konfiguration
+        strict_engine = DataGovernanceEngine()
+        strict_engine.config["validation_rules"]["validation_level"] = "strict"
+
+        result = strict_engine.validate_note_creation(
+            name="x",
+            content="Valid content with sufficient length",
+            description="Valid description",
+            note_type="test"
+        )
+
+        assert result.passed == False
+
+    def test_invalid_validation_level_defaults_to_warning(self):
+        """Test: Ungültige Validierungsebene fällt auf WARNING zurück"""
+        engine = DataGovernanceEngine()
+        engine.config["validation_rules"]["validation_level"] = "invalid_level"
+
+        result = engine.validate_note_creation(
+            name="x",
+            content="Valid content with sufficient length",
+            description="Valid description",
+            note_type="test"
+        )
+
+        # Should behave like WARNING mode
+        assert result.passed == True
+
+
+class TestPerformanceTagGeneration:
+    """Tests für die neue Performance-Tag-Funktionalität"""
+
+    @pytest.fixture
+    def governance_engine(self):
+        return DataGovernanceEngine()
+
+    def test_performance_metrics_tags(self, governance_engine):
+        """Test: Performance-Metriken Tags werden korrekt erkannt"""
+        content = "This system includes performance monitoring and benchmark testing with metrics collection"
+
+        result = governance_engine.validate_note_creation(
+            name="Performance Monitoring System",
+            content=content,
+            description="Performance monitoring description",
+            note_type="system"
+        )
+
+        # Check if performance-metrics tag is suggested
+        performance_suggestions = [s for s in result.suggestions if "performance-metrics" in s]
+        assert len(performance_suggestions) > 0
+
+    def test_system_optimization_tags(self, governance_engine):
+        """Test: System-Optimierung Tags werden korrekt erkannt"""
+        content = "Database optimization and query tuning for improved efficiency and speed"
+
+        result = governance_engine.validate_note_creation(
+            name="Database Optimization Guide",
+            content=content,
+            description="Optimization guide description",
+            note_type="guide"
+        )
+
+        # Check if system-optimization tag is suggested
+        optimization_suggestions = [s for s in result.suggestions if "system-optimization" in s]
+        assert len(optimization_suggestions) > 0
+
+    def test_command_tracking_tags(self, governance_engine):
+        """Test: Command-Tracking Tags werden korrekt erkannt"""
+        content = "Command execution tracking and monitoring with audit logging for terminal operations"
+
+        result = governance_engine.validate_note_creation(
+            name="Command Tracking System",
+            content=content,
+            description="Command tracking description",
+            note_type="system"
+        )
+
+        # Check if command-tracking tag is suggested
+        tracking_suggestions = [s for s in result.suggestions if "command-tracking" in s]
+        assert len(tracking_suggestions) > 0
+
+    def test_multiple_performance_tags(self, governance_engine):
+        """Test: Mehrere Performance-Tags gleichzeitig"""
+        content = """
+        Performance monitoring system with benchmark testing, optimization features,
+        and command execution tracking. Includes metrics collection, database optimization,
+        and terminal monitoring with audit logging.
+        """
+
+        result = governance_engine.validate_note_creation(
+            name="Comprehensive Performance System",
+            content=content,
+            description="Complete performance system",
+            note_type="system"
+        )
+
+        # Should suggest multiple performance-related tags
+        tag_suggestions = [s for s in result.suggestions if "Tag" in s]
+        if tag_suggestions:
+            suggested_tags = tag_suggestions[0].lower()
+            assert "performance-metrics" in suggested_tags
+            assert "system-optimization" in suggested_tags
+            assert "command-tracking" in suggested_tags
+
+    def test_tag_deduplication(self, governance_engine):
+        """Test: Tag-Deduplizierung funktioniert korrekt"""
+        content = "Python framework for performance monitoring and python development"
+
+        result = governance_engine.validate_note_creation(
+            name="Python Performance Framework",
+            content=content,
+            description="Python framework description",
+            note_type="framework"
+        )
+
+        # Should not have duplicate "python" tags
+        tag_suggestions = [s for s in result.suggestions if "Tag" in s]
+        if tag_suggestions:
+            # Count occurrences of "python" in suggestions
+            python_count = tag_suggestions[0].lower().count("python")
+            # Should appear only once despite being mentioned twice in content
+            assert python_count <= 2  # Once from content, once from template potentially
+
+    def test_performance_tags_with_template(self, governance_engine):
+        """Test: Performance-Tags mit Template-Integration"""
+        # Add a performance-focused template
+        governance_engine.add_template(
+            name="Performance Analysis Template",
+            required_sections=["metrics", "benchmarks", "optimization"],
+            suggested_tags=["performance", "analysis"],
+            workflow_step="performance-testing",
+            content_standards={
+                "min_length": 200,
+                "required_keywords": ["performance", "metrics"]
+            }
+        )
+
+        content = """
+        **Metrics:** Performance benchmarks show 50ms response time
+        **Benchmarks:** System handles 1000 requests per second
+        **Optimization:** Database queries optimized for better performance
+        """
+
+        result = governance_engine.validate_note_creation(
+            name="API Performance Analysis",
+            content=content,
+            description="Performance analysis results",
+            note_type="analysis",
+            template="Performance Analysis Template"
+        )
+
+        # Should pass with performance tags
+        assert result.passed == True
+        tag_suggestions = [s for s in result.suggestions if "Tag" in s]
+        if tag_suggestions:
+            suggested_tags = tag_suggestions[0].lower()
+            assert "performance" in suggested_tags
+
+
+class TestEnhancedContextValidation:
+    """Tests für erweiterte Context-basierte Validierung mit Performance-Features"""
+
+    @pytest.fixture
+    def governance_engine(self):
+        return DataGovernanceEngine()
+
+    def test_context_validation_with_performance_project(self, governance_engine):
+        """Test: Context-Validierung für Performance-Projekte"""
+        result = governance_engine.validate_note_creation_with_context(
+            name="Load Testing Framework",
+            content="Performance testing framework with benchmark capabilities and metrics collection for system optimization",
+            description="Load testing framework description",
+            project_type="development",
+            project_name="Performance Testing Suite",
+            keywords=["performance", "testing", "benchmarks"]
+        )
+
+        assert isinstance(result, ValidationResult)
+        assert result.passed == True
+
+        # Should suggest performance-related tags
+        tag_suggestions = [s for s in result.suggestions if "Tag" in s]
+        if tag_suggestions:
+            suggested_tags = tag_suggestions[0].lower()
+            assert "performance" in suggested_tags or "testing" in suggested_tags
+
+    def test_auto_template_selection_for_performance(self, governance_engine):
+        """Test: Automatische Template-Auswahl für Performance-Content"""
+        # Mock Neo4j template creation
+        with patch.object(governance_engine.neo4j_manager, 'is_connected', return_value=False):
+            templates = governance_engine.get_templates_for_context(
+                project_type="performance",
+                project_name="Benchmark Suite",
+                keywords=["performance", "benchmarks", "metrics"]
+            )
+
+            # Should return templates (fallback to local config)
+            assert isinstance(templates, dict)
+            assert len(templates) > 0
+
+    def test_performance_keyword_extraction(self, governance_engine):
+        """Test: Performance-Keywords werden korrekt extrahiert"""
+        content = "System performance monitoring with latency measurement and throughput optimization"
+
+        # Test the actual tag suggestion method which includes performance logic
+        suggested_tags = governance_engine._suggest_tags(content, "system", None)
+
+        # Should extract performance-related tags
+        performance_tags = ["performance-metrics", "system-optimization"]
+        found_tags = [tag for tag in suggested_tags if any(perf_tag in tag for perf_tag in performance_tags)]
+        assert len(found_tags) > 0
+
+    def test_template_selection_with_performance_keywords(self, governance_engine):
+        """Test: Template-Auswahl basierend auf Performance-Keywords"""
+        # Add performance template
+        governance_engine.add_template(
+            name="Performance Monitoring Template",
+            required_sections=["overview", "metrics", "analysis"],
+            suggested_tags=["performance", "monitoring"],
+            workflow_step="monitoring",
+            content_standards={
+                "min_length": 150,
+                "required_keywords": ["performance", "monitoring"]
+            }
+        )
+
+        templates = governance_engine.get_templates()
+        content = "Performance monitoring system with comprehensive metrics"
+        keywords = ["performance", "monitoring"]
+
+        best_template = governance_engine._select_best_template(templates, keywords, content)
+
+        # Should select the performance template if it matches
+        assert best_template is not None
+
+
+class TestEdgeCasesValidationLevels:
+    """Tests für Edge Cases mit verschiedenen Validierungsebenen"""
+
+    @pytest.fixture
+    def governance_engine_strict(self):
+        engine = DataGovernanceEngine()
+        engine.update_validation_rules({"validation_level": "strict"})
+        return engine
+
+    @pytest.fixture
+    def governance_engine_lenient(self):
+        engine = DataGovernanceEngine()
+        engine.update_validation_rules({"validation_level": "lenient"})
+        return engine
+
+    def test_none_values_strict_mode(self, governance_engine_strict):
+        """Test: None-Werte im STRICT Modus"""
+        result = governance_engine_strict.validate_note_creation(
+            name=None,
+            content=None,
+            description=None,
+            note_type=None
+        )
+
+        assert result.passed == False
+        assert len(result.errors) > 0
+        assert any("darf nicht" in error for error in result.errors)
+
+    def test_none_values_lenient_mode(self, governance_engine_lenient):
+        """Test: None-Werte im LENIENT Modus"""
+        result = governance_engine_lenient.validate_note_creation(
+            name=None,
+            content=None,
+            description=None,
+            note_type=None
+        )
+
+        # Even in LENIENT mode, None values should be blocked
+        assert result.passed == False
+        assert any("darf nicht None" in error for error in result.errors)
+
+    def test_empty_strings_different_modes(self, governance_engine_strict, governance_engine_lenient):
+        """Test: Leere Strings in verschiedenen Modi"""
+        # STRICT mode
+        strict_result = governance_engine_strict.validate_note_creation(
+            name="",
+            content="",
+            description="",
+            note_type=""
+        )
+        assert strict_result.passed == False
+
+        # LENIENT mode
+        lenient_result = governance_engine_lenient.validate_note_creation(
+            name="Valid Name",  # At least name should be valid
+            content="",
+            description="",
+            note_type=""
+        )
+        # LENIENT should be more forgiving but still require some basic content
+        # The exact behavior depends on implementation details
+
+    def test_special_characters_validation_levels(self, governance_engine_strict, governance_engine_lenient):
+        """Test: Sonderzeichen in verschiedenen Validierungsebenen"""
+        name_with_special_chars = "Test@Note#With$Special%Characters"
+
+        # STRICT mode should flag special characters
+        strict_result = governance_engine_strict.validate_note_creation(
+            name=name_with_special_chars,
+            content="Valid content with sufficient length",
+            description="Valid description",
+            note_type="test"
+        )
+        assert any("ungültige Zeichen" in error or "ungültige Zeichen" in warning
+                  for error in strict_result.errors for warning in strict_result.warnings)
+
+        # LENIENT mode should ignore special characters
+        lenient_result = governance_engine_lenient.validate_note_creation(
+            name=name_with_special_chars,
+            content="Valid content with sufficient length",
+            description="Valid description",
+            note_type="test"
+        )
+        # Should be more permissive
+        assert lenient_result.passed == True or len(lenient_result.errors) == 0
+
+
+class TestPerformanceTagIntegration:
+    """Integrationstests für Performance-Tags mit verschiedenen Systemen"""
+
+    @pytest.fixture
+    def governance_engine(self):
+        return DataGovernanceEngine()
+
+    def test_performance_tags_with_workflows(self, governance_engine):
+        """Test: Performance-Tags mit Workflow-Integration"""
+        # Add performance workflow
+        governance_engine.add_workflow(
+            name="Performance Testing Workflow",
+            steps=["baseline", "optimization", "benchmarking", "monitoring"],
+            templates=["Performance Analysis Template"],
+            auto_assign=True
+        )
+
+        content = "Performance baseline measurement and system optimization benchmarks"
+
+        result = governance_engine.validate_note_creation(
+            name="Performance Baseline Study",
+            content=content,
+            description="Baseline performance study",
+            note_type="study"
+        )
+
+        # Should suggest workflow steps related to performance
+        workflow_suggestions = [s for s in result.suggestions if "Workflow" in s]
+        if workflow_suggestions:
+            assert len(workflow_suggestions) > 0
+
+    def test_performance_tags_neo4j_fallback(self, governance_engine):
+        """Test: Performance-Tags mit Neo4j-Fallback"""
+        # Mock Neo4j unavailable
+        with patch.object(governance_engine.neo4j_manager, 'is_connected', return_value=False):
+            content = "Performance monitoring system with metrics and optimization features"
+
+            result = governance_engine.validate_note_creation_with_context(
+                name="Performance Monitor",
+                content=content,
+                description="Performance monitoring system",
+                project_type="monitoring",
+                project_name="System Monitor",
+                keywords=["performance", "monitoring"]
+            )
+
+            # Should still work without Neo4j
+            assert isinstance(result, ValidationResult)
+            assert result.passed == True
+
+    def test_full_performance_workflow(self, governance_engine):
+        """Test: Kompletter Performance-Workflow"""
+        # Set up performance-focused configuration
+        governance_engine.add_template(
+            name="Performance Report Template",
+            required_sections=["Executive Summary", "Metrics", "Analysis", "Recommendations"],
+            suggested_tags=["performance", "report", "analysis"],
+            workflow_step="reporting",
+            content_standards={
+                "min_length": 500,
+                "required_keywords": ["performance", "metrics", "analysis"]
+            }
+        )
+
+        governance_engine.add_workflow(
+            name="Performance Analysis Workflow",
+            steps=["planning", "measurement", "analysis", "reporting", "optimization"],
+            templates=["Performance Report Template"],
+            auto_assign=True
+        )
+
+        content = """
+        **Executive Summary:** System performance analysis completed
+        **Metrics:** Response time: 45ms, Throughput: 1200 RPS, CPU usage: 65%
+        **Analysis:** Performance bottlenecks identified in database queries
+        **Recommendations:** Implement query optimization and caching strategy
+        
+        Detailed performance monitoring revealed optimization opportunities
+        in system throughput and database efficiency.
+        """
+
+        result = governance_engine.validate_note_creation(
+            name="Q4 Performance Analysis Report",
+            content=content,
+            description="Quarterly performance analysis with optimization recommendations",
+            note_type="report",
+            template="Performance Report Template"
+        )
+
+        # Should pass all validations
+        assert result.passed == True
+        assert len(result.errors) == 0
+
+        # Should suggest performance-related tags
+        tag_suggestions = [s for s in result.suggestions if "Tag" in s]
+        if tag_suggestions:
+            suggested_tags = tag_suggestions[0].lower()
+            # Check for performance-related tags (more flexible assertion)
+            performance_related = ["performance", "performance-metrics", "system-optimization"]
+            assert any(tag in suggested_tags for tag in performance_related)
+
+
 if __name__ == "__main__":
     # Führe Tests aus wenn direkt aufgerufen
     pytest.main([__file__, "-v"])

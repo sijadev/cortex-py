@@ -25,3 +25,19 @@ asyncio-mqtt>=0.13.0
 # These are commonly needed with MCP but can be installed independently
 httpx>=0.24.0
 anyio>=3.6.0
+
+# Performance Database Dependencies
+psutil>=5.9.0          # System monitoring (CPU, memory usage)
+pandas>=2.0.0          # Data analysis for performance metrics
+numpy>=1.24.0          # Numerical operations
+matplotlib>=3.7.0      # Performance visualization (optional)
+seaborn>=0.12.0        # Statistical visualizations (optional)
+
+# Safety and Transaction Management
+schedule>=1.2.0        # Task scheduling for automated snapshots
+
+# Testing Dependencies
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.0
