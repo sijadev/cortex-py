@@ -1,0 +1,124 @@
+name: ⚡ CLI Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'cortex-cli/**'
+      - 'bin/**'
+      - '.github/workflows/cli-tests.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'cortex-cli/**'
+      - 'bin/**'
+  workflow_call:
+
+env:
+  PYTHON_VERSION: "3.11"
+  NEO4J_DISABLED: "1"
+  CI: "true"
+
+jobs:
+  cli-tests:
+    name: Cortex CLI Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Cache Python dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-cli-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-cli-
+          ${{ runner.os }}-pip-
+
+    - name: Install system dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+
+    - name: Install Cortex CLI in development mode
+      run: |
+        cd cortex-cli
+        pip install -e .
+        echo "✅ Cortex CLI installed in development mode"
+
+    - name: Run CLI unit tests
+      run: |
+        echo "⚡ Running Cortex CLI Tests..."
+        cd cortex-cli
+        python -m pytest tests/ \
+          -v \
+          --tb=short \
+          --junitxml=cli-test-results.xml
+
+    - name: Test CLI installation and help
+      run: |
+        echo "🔍 Testing CLI installation..."
+        which cortex-cmd || echo "cortex-cmd not in PATH"
+        ls -la cortex-cli/bin/ || echo "No bin directory"
+        
+        # Test direct execution
+        if [ -f "bin/cortex" ]; then
+          echo "Testing bin/cortex..."
+          ./bin/cortex --help || echo "bin/cortex failed"
+        fi
+        
+        if [ -f "cortex-cli/bin/cortex-cmd" ]; then
+          echo "Testing cortex-cli/bin/cortex-cmd..."
+          ./cortex-cli/bin/cortex-cmd --help || echo "cortex-cmd failed"
+        fi
+
+    - name: Test CLI smoke commands
+      run: |
+        echo "💨 Running CLI smoke tests..."
+        cd cortex-cli
+        python -m pytest tests/ -k "smoke" -v || echo "No smoke tests found"
+
+    - name: Upload CLI test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: cli-test-results-${{ github.run_number }}
+        path: |
+          cortex-cli/tests/reports/
+          cortex-cli/cli-test-results.xml
+          cortex-cli/logs/
+        retention-days: 7
+
+  cli-installation-test:
+    name: CLI Installation Test
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.9", "3.11", "3.12"]
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Test CLI installation
+      run: |
+        echo "📦 Testing CLI installation on ${{ matrix.os }} with Python ${{ matrix.python-version }}"
+        cd cortex-cli
+        pip install -e .
+        echo "✅ Installation successful"

@@ -1,0 +1,63 @@
+name: 🧪 Smoke Tests
+
+on:
+  push:
+    branches: [ main, develop, feature/* ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.11"
+  NEO4J_DISABLED: "1"
+  CI: "true"
+
+jobs:
+  smoke-tests:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Cache Python dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-smoke-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-smoke-
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+
+    - name: Run smoke tests
+      run: |
+        echo "🧪 Running Cortex Smoke Tests..."
+        python run_smoke_tests.py
+
+    - name: Upload smoke test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: smoke-test-results-${{ github.run_number }}
+        path: |
+          smoke_test_results.txt
+        retention-days: 7
+
+    - name: Notify on failure
+      if: failure()
+      run: |
+        echo "❌ Smoke tests failed - basic system functionality broken"
+        exit 1

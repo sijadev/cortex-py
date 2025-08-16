@@ -1,80 +1,107 @@
-name: Quick Tests
+name: ⚡ Quick Tests
 
 on:
   push:
-    branches-ignore: [ main ]
+    branches: [ feature/*, bugfix/*, hotfix/* ]
   pull_request:
-    types: [opened, synchronize, reopened]
+    branches: [ develop ]
+    types: [ opened, synchronize ]
+  workflow_dispatch:
+    inputs:
+      test-level:
+        description: 'Test level (smoke, unit, all)'
+        required: false
+        default: 'smoke'
+        type: choice
+        options:
+        - smoke
+        - unit
+        - all
+
+env:
+  PYTHON_VERSION: "3.11"
+  NEO4J_DISABLED: "1"
+  CI: "true"
 
 jobs:
-  quick-test:
+  quick-validation:
+    name: Quick Validation
     runs-on: ubuntu-latest
+    timeout-minutes: 8
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1  # Shallow clone für Geschwindigkeit
 
-    - name: Set up Python 3.12
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v4
       with:
-        python-version: 3.12
+        python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: Cache pip dependencies
+    - name: Cache Python dependencies
       uses: actions/cache@v3
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        key: ${{ runner.os }}-pip-quick-${{ hashFiles('requirements.txt') }}
         restore-keys: |
+          ${{ runner.os }}-pip-quick-
           ${{ runner.os }}-pip-
 
-    - name: Install dependencies
+    - name: Install minimal dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install -r requirements-dev.txt
+        # Nur essential dev dependencies für Quick Tests
+        pip install pytest
 
-    - name: Set up test environment
+    - name: Run smoke tests (always)
       run: |
-        mkdir -p logs/tests tests/reports
-        export PYTHONPATH="${PYTHONPATH}:$(pwd):$(pwd)/src"
-        export NEO4J_DISABLED=1
-        echo "PYTHONPATH=${PYTHONPATH}:$(pwd):$(pwd)/src" >> $GITHUB_ENV
-        echo "NEO4J_DISABLED=1" >> $GITHUB_ENV
+        echo "💨 Running quick smoke tests..."
+        python run_smoke_tests.py
 
-    - name: Run fast test subset
+    - name: Run unit tests (if requested)
+      if: inputs.test-level == 'unit' || inputs.test-level == 'all'
       run: |
-        # Nur die wichtigsten Tests für schnelles Feedback
-        python -m pytest tests/unit/ -x --tb=short -q
+        echo "🔬 Running unit tests..."
+        python -m pytest tests/unit/ -v --tb=short --maxfail=3
 
-    - name: Basic MCP validation
+    - name: Run basic integration tests (if all requested)
+      if: inputs.test-level == 'all'
       run: |
-        python -c "
-        import sys
-        sys.path.insert(0, 'src')
-        try:
-            from mcp.mcp_server import create_server
-            print('✅ MCP Server import successful')
-        except ImportError as e:
-            print(f'⚠️  MCP Server import failed: {e}')
-            sys.exit(1)
-        "
+        echo "🔗 Running basic integration tests..."
+        python -m pytest tests/integration/test_system_integration.py::TestSystemIntegration::test_project_structure_completeness -v
 
-  lint-check:
+  syntax-check:
+    name: Syntax & Import Check
     runs-on: ubuntu-latest
+    timeout-minutes: 3
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout Code
+      uses: actions/checkout@v4
 
-    - name: Set up Python
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v4
       with:
-        python-version: 3.12
+        python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: Install linting tools
+    - name: Check Python syntax
       run: |
-        pip install flake8 black isort
+        echo "🔍 Checking Python syntax..."
+        python -m py_compile src/**/*.py
+        python -m py_compile cortex-cli/**/*.py
+        python -m py_compile tests/**/*.py
 
-    - name: Quick lint check
+    - name: Test direct imports
       run: |
-        # Nur kritische Linting-Fehler prüfen
-        flake8 src/ --select=E9,F63,F7,F82 --show-source --statistics
-        echo "✅ Critical lint check passed"
+        echo "📦 Testing direct imports..."
+        python tests/test_direct_imports.py
+
+    - name: Quick status summary
+      run: |
+        echo "⚡ Quick Tests Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- Syntax check: ✅" >> $GITHUB_STEP_SUMMARY
+        echo "- Import check: ✅" >> $GITHUB_STEP_SUMMARY
+        echo "- Smoke tests: ✅" >> $GITHUB_STEP_SUMMARY

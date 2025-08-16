@@ -831,13 +831,10 @@ class DataGovernanceEngine:
             return
 
         # Keine Sonderzeichen außer Leerzeichen, Bindestriche
-        if not re.match(r"^[a-zA-Z0-9\s\-\.]+$", name):
+        if not re.match(r"^[a-zA-Z0-9\s\-.]+$", name):
             message = "Name enthält ungültige Zeichen"
-            if validation_level == ValidationLevel.STRICT:
-                result.errors.append(message)
-            elif validation_level == ValidationLevel.WARNING:
-                result.warnings.append(message)
-            # In LENIENT mode, ignore this
+            result.errors.append(message)  # Always an error, regardless of validation level
+            return
 
         # Keine generischen Namen
         generic_names = ["test", "note", "example", "temp", "new"]

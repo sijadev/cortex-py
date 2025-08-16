@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+"""
+Cortex Learning CLI
+Training und Lernmodule für das Cortex System
+"""
+
+import sys
+import argparse
+from pathlib import Path
+
+def main():
+    parser = argparse.ArgumentParser(description='Cortex Learning CLI')
+    parser.add_argument('--help', '-h', action='help', help='Show this help message')
+    parser.add_argument('--version', '-v', action='version', version='Cortex Learning 1.0.0')
+
+    args = parser.parse_args()
+
+    print("🧠 Cortex Learning CLI")
+    print("Training modules and learning resources")
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())

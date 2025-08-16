@@ -5,7 +5,7 @@ Konfiguriert das System für die neue Neo4j-Datenbank
 """
 
 import os
-from data_governance import DataGovernanceEngine, Neo4jTemplateManager
+from src.governance.data_governance import DataGovernanceEngine, Neo4jTemplateManager
 
 
 class CortexSystemConfig:

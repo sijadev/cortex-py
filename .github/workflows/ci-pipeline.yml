@@ -1,0 +1,117 @@
+name: 🎯 Complete CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 1 * * *'  # Täglich um 1 Uhr UTC
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  trigger-smoke-tests:
+    name: 🧪 Smoke Tests
+    uses: ./.github/workflows/smoke-tests.yml
+
+  trigger-unit-tests:
+    name: 🔬 Unit Tests
+    needs: trigger-smoke-tests
+    uses: ./.github/workflows/unit-tests.yml
+    with:
+      coverage-threshold: '85'
+
+  trigger-integration-tests:
+    name: 🔗 Integration Tests
+    needs: trigger-unit-tests
+    uses: ./.github/workflows/integration-tests.yml
+
+  trigger-cli-tests:
+    name: ⚡ CLI Tests
+    needs: trigger-smoke-tests
+    uses: ./.github/workflows/cli-tests.yml
+
+  trigger-mcp-tests:
+    name: 🤖 MCP Tests
+    needs: trigger-smoke-tests
+    uses: ./.github/workflows/mcp-tests.yml
+
+  trigger-security-quality:
+    name: 🔒 Security & Quality
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/security-quality.yml
+
+  build-status-report:
+    name: 📊 Build Status Report
+    runs-on: ubuntu-latest
+    needs: [
+      trigger-smoke-tests,
+      trigger-unit-tests,
+      trigger-integration-tests,
+      trigger-cli-tests,
+      trigger-mcp-tests
+    ]
+    if: always()
+    timeout-minutes: 5
+
+    steps:
+    - name: Generate comprehensive report
+      run: |
+        echo "# 🎯 Cortex CI Pipeline Status Report" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Test Results Overview" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Smoke Tests
+        if [ "${{ needs.trigger-smoke-tests.result }}" = "success" ]; then
+          echo "- 🧪 Smoke Tests: ✅ **PASSED**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- 🧪 Smoke Tests: ❌ **FAILED**" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        # Unit Tests  
+        if [ "${{ needs.trigger-unit-tests.result }}" = "success" ]; then
+          echo "- 🔬 Unit Tests: ✅ **PASSED**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- 🔬 Unit Tests: ❌ **FAILED**" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        # Integration Tests
+        if [ "${{ needs.trigger-integration-tests.result }}" = "success" ]; then
+          echo "- 🔗 Integration Tests: ✅ **PASSED**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- 🔗 Integration Tests: ❌ **FAILED**" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        # CLI Tests
+        if [ "${{ needs.trigger-cli-tests.result }}" = "success" ]; then
+          echo "- ⚡ CLI Tests: ✅ **PASSED**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- ⚡ CLI Tests: ❌ **FAILED**" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        # MCP Tests
+        if [ "${{ needs.trigger-mcp-tests.result }}" = "success" ]; then
+          echo "- 🤖 MCP Tests: ✅ **PASSED**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- 🤖 MCP Tests: ❌ **FAILED**" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Overall Status" >> $GITHUB_STEP_SUMMARY
+        
+        # Check overall status
+        if [[ "${{ needs.trigger-smoke-tests.result }}" == "success" && \
+              "${{ needs.trigger-unit-tests.result }}" == "success" && \
+              "${{ needs.trigger-integration-tests.result }}" == "success" && \
+              "${{ needs.trigger-cli-tests.result }}" == "success" && \
+              "${{ needs.trigger-mcp-tests.result }}" == "success" ]]; then
+          echo "🎉 **ALL TESTS PASSED** - Ready for deployment!" >> $GITHUB_STEP_SUMMARY
+          exit 0
+        else
+          echo "⚠️ **SOME TESTS FAILED** - Review required before merge" >> $GITHUB_STEP_SUMMARY  
+          exit 1
+        fi

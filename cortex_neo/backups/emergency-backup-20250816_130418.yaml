@@ -1,0 +1,25 @@
+notes:
+- Django Framework
+- E1
+- E2
+- Guido van Rossum
+- PyTest Framework
+- Python Geschichte
+- Python Taschenrechner Beispiel
+- export_structure.yaml
+templates:
+- Python Framework
+tags:
+- framework
+- geschichte
+- python
+links:
+- from: E1
+  to: E2
+assignments:
+  uses_template:
+  - note: Django Framework
+    template: Python Framework
+  - note: PyTest Framework
+    template: Python Framework
+  tagged_with: []

@@ -950,7 +950,8 @@ class MarkdownTagSystem:
         link_types = [link[0] for link in structure.links]
         if MDLinkType.EXTERNAL_HTTP in link_types:
             tags.append('external-refs')
-        if MDLinkType.INTERNAL_WIKI in link_types:
+        # Add internal-refs if either wiki links are present or INTERNAL_WIKI is in links
+        if MDLinkType.INTERNAL_WIKI in link_types or structure.wiki_links:
             tags.append('internal-refs')
 
         # Structure-based tags

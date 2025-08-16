@@ -1,0 +1,66 @@
+# Sample Neo4j Database Structure for Cortex
+# This file defines the basic structure for the Cortex knowledge graph
+
+nodes:
+  - label: "Document"
+    properties:
+      - name: "title"
+        type: "string"
+      - name: "content"
+        type: "string"
+      - name: "created_at"
+        type: "datetime"
+      - name: "updated_at"
+        type: "datetime"
+
+  - label: "Tag"
+    properties:
+      - name: "name"
+        type: "string"
+      - name: "category"
+        type: "string"
+
+  - label: "Person"
+    properties:
+      - name: "name"
+        type: "string"
+      - name: "email"
+        type: "string"
+
+relationships:
+  - type: "HAS_TAG"
+    from: "Document"
+    to: "Tag"
+    properties:
+      - name: "relevance"
+        type: "float"
+
+  - type: "CREATED_BY"
+    from: "Document"
+    to: "Person"
+    properties:
+      - name: "timestamp"
+        type: "datetime"
+
+  - type: "RELATES_TO"
+    from: "Document"
+    to: "Document"
+    properties:
+      - name: "similarity"
+        type: "float"
+
+constraints:
+  - type: "UNIQUE"
+    label: "Document"
+    property: "title"
+
+  - type: "UNIQUE"
+    label: "Tag"
+    property: "name"
+
+indexes:
+  - label: "Document"
+    property: "created_at"
+
+  - label: "Tag"
+    property: "category"

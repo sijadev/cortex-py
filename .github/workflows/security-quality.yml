@@ -1,0 +1,115 @@
+name: 🔒 Security & Code Quality
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 3 * * 1'  # Wöchentlich montags um 3 Uhr UTC
+  workflow_call:
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  security-scan:
+    name: Security Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit safety semgrep
+
+    - name: Run Bandit security linter
+      run: |
+        echo "🔍 Running Bandit security analysis..."
+        bandit -r src/ cortex-cli/ -f json -o bandit-report.json || true
+        bandit -r src/ cortex-cli/ -f txt
+
+    - name: Check for known vulnerabilities
+      run: |
+        echo "🛡️ Checking for known vulnerabilities..."
+        safety check --json --output safety-report.json || true
+        safety check
+
+    - name: Run Semgrep security analysis
+      run: |
+        echo "🔎 Running Semgrep security analysis..."
+        semgrep --config=auto src/ cortex-cli/ --json --output=semgrep-report.json || true
+
+    - name: Upload security scan results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-scan-results-${{ github.run_number }}
+        path: |
+          bandit-report.json
+          safety-report.json
+          semgrep-report.json
+        retention-days: 30
+
+  code-quality:
+    name: Code Quality Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install code quality tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black isort mypy pylint
+
+    - name: Run Black formatter check
+      run: |
+        echo "⚫ Checking code formatting with Black..."
+        black --check --diff src/ cortex-cli/ tests/
+
+    - name: Run isort import sorting check
+      run: |
+        echo "📦 Checking import sorting with isort..."
+        isort --check-only --diff src/ cortex-cli/ tests/
+
+    - name: Run Flake8 linting
+      run: |
+        echo "🔍 Running Flake8 linting..."
+        flake8 src/ cortex-cli/ tests/ --max-line-length=88 --extend-ignore=E203
+
+    - name: Run MyPy type checking
+      run: |
+        echo "🔍 Running MyPy type checking..."
+        mypy src/ --ignore-missing-imports || true
+
+    - name: Run Pylint analysis
+      run: |
+        echo "🔍 Running Pylint analysis..."
+        pylint src/ cortex-cli/ --output-format=json --reports=no > pylint-report.json || true
+        pylint src/ cortex-cli/ --reports=no || true
+
+    - name: Upload code quality results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: code-quality-results-${{ github.run_number }}
+        path: |
+          pylint-report.json
+        retention-days: 7
