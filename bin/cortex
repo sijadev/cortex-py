@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+"""
+Cortex CLI - macOS Executable Wrapper
+Macht die neue strukturierte CLI auf macOS verfügbar
+"""
+
+import sys
+import os
+from pathlib import Path
+
+# Add the project root to Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+try:
+    # Import the new structured CLI
+    from cortex_neo.cortex_cli import cortex
+
+    if __name__ == '__main__':
+        cortex()
+
+except ImportError as e:
+    print(f"❌ Fehler beim Laden der Cortex CLI: {e}")
+    print("💡 Bitte installiere die Abhängigkeiten:")
+    print("   pip install click neo4j")
+    sys.exit(1)
+except Exception as e:
+    print(f"❌ Unerwarteter Fehler: {e}")
+    sys.exit(1)
